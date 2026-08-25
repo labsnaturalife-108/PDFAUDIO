@@ -197,6 +197,45 @@
             </div>
 
             <div class="form-group">
+              <label>Эмоция и стиль чтения:</label>
+              <div class="emotions-grid" id="emotionsGrid">
+                <button type="button" class="emotion-chip active" data-emotion="expressive" data-temp="0.88" data-speed="1.0" data-instruct="Read expressively like a professional audiobook narrator. Use vivid intonation, emotional depth, and natural pauses. Strictly pronounce Russian 'е' as 'Е' and 'ё' as 'Ё'.">
+                  🎭 Выразительный
+                </button>
+                <button type="button" class="emotion-chip" data-emotion="dramatic" data-temp="0.95" data-speed="0.95" data-instruct="Read with intense dramatic emotion, deep theatrical resonance, suspenseful pauses, and powerful passionate storytelling.">
+                  ⚡ Драматичный
+                </button>
+                <button type="button" class="emotion-chip" data-emotion="mysterious" data-temp="0.90" data-speed="0.92" data-instruct="Read with a mysterious, intriguing, suspenseful tone, quiet whispers, deep curiosity, and slow atmospheric pacing.">
+                  🤫 Таинственный
+                </button>
+                <button type="button" class="emotion-chip" data-emotion="energetic" data-temp="0.85" data-speed="1.08" data-instruct="Read enthusiastically with high energy, warm optimism, dynamic pacing, and uplifting cheerful intonation.">
+                  🌟 Энергичный
+                </button>
+                <button type="button" class="emotion-chip" data-emotion="calm" data-temp="0.75" data-speed="0.98" data-instruct="Read calmly, clearly, and authoritatively like a wise storyteller, philosophy professor, or documentary narrator.">
+                  🎙️ Спокойный
+                </button>
+                <button type="button" class="emotion-chip" data-emotion="meditative" data-temp="0.80" data-speed="0.88" data-instruct="Read very softly, gently, with a soothing meditative whisper, relaxing pauses, and peaceful warmth.">
+                  🧘 Медитативный
+                </button>
+              </div>
+            </div>
+
+            <!-- Advanced Prompt Details Accordion -->
+            <details class="custom-details">
+              <summary>Промпт эмоции и температура нейросети</summary>
+              <div class="details-content">
+                <div class="form-group">
+                  <label for="paramTemp">Температура вариативности (эмоциональность): <strong id="valTemp">0.88</strong></label>
+                  <input type="range" id="paramTemp" min="0.5" max="1.1" step="0.02" value="0.88" class="custom-range">
+                </div>
+                <div class="form-group">
+                  <label for="customInstructInput">Текстовая инструкция (Instruct Prompt)</label>
+                  <textarea id="customInstructInput" rows="2" class="custom-textarea sm">Read expressively like a professional audiobook narrator. Use vivid intonation, emotional depth, and natural pauses. Strictly pronounce Russian 'е' as 'Е' and 'ё' as 'Ё'.</textarea>
+                </div>
+              </div>
+            </details>
+
+            <div class="form-group">
               <label>Имя итогового файла</label>
               <input type="text" id="outputNameInput" class="custom-input" placeholder="Например: Аудиокнига_Глава_1">
             </div>

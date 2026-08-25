@@ -430,6 +430,38 @@ function initStudio() {
   // Range sliders
   bindSlider('paramPause', 'valPause', '');
   bindSlider('paramSpeed', 'valSpeed', '');
+  bindSlider('paramTemp', 'valTemp', '');
+
+  // Emotion presets
+  const emotionChips = document.querySelectorAll('.emotion-chip');
+  const tempSlider = document.getElementById('paramTemp');
+  const valTemp = document.getElementById('valTemp');
+  const speedSlider = document.getElementById('paramSpeed');
+  const valSpeed = document.getElementById('valSpeed');
+  const instructInput = document.getElementById('customInstructInput');
+
+  emotionChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      emotionChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const temp = chip.getAttribute('data-temp');
+      const speed = chip.getAttribute('data-speed');
+      const instruct = chip.getAttribute('data-instruct');
+
+      if (tempSlider && temp) {
+        tempSlider.value = temp;
+        if (valTemp) valTemp.textContent = temp;
+      }
+      if (speedSlider && speed) {
+        speedSlider.value = speed;
+        if (valSpeed) valSpeed.textContent = speed;
+      }
+      if (instructInput && instruct) {
+        instructInput.value = instruct;
+      }
+    });
+  });
 
   // Live text input character counter
   rawTextInput.addEventListener('input', () => {
@@ -545,6 +577,8 @@ function initStudio() {
         output_format: selectedFormat,
         pause_duration: parseFloat(document.getElementById('paramPause').value),
         speed: parseFloat(document.getElementById('paramSpeed').value),
+        temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
+        instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
         apply_loudnorm: true
       };
 

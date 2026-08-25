@@ -666,6 +666,75 @@ body {
   background: #ffffff;
 }
 
+.emotions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.emotion-chip {
+  background: #fafaf9;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.emotion-chip:hover {
+  background: #ffffff;
+  border-color: #a1a1aa;
+  color: var(--text-main);
+}
+
+.emotion-chip.active {
+  background: var(--bg-emerald);
+  border-color: var(--bg-emerald);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(13, 56, 44, 0.2);
+}
+
+.custom-details {
+  background: #fafaf9;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+}
+
+.custom-details summary {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.custom-details summary:hover {
+  color: var(--text-main);
+}
+
+.details-content {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-textarea.sm {
+  min-height: 50px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .btn-start-large {
   background: var(--bg-emerald);
   color: #ffffff;
