@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AudioBook Studio — Flash & Fish Audio S2</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="bento-container">
+    
+    <!-- Top Bar -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-badge">🎙️</div>
+        <div>
+          <h1 class="brand-title">AudioBook Studio</h1>
+          <span class="brand-sub">Flash Audio 2 / Fish Audio S2 • Синтез аудиокниг</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-pills">
+        <button class="nav-pill active" data-tab="studio">
+          <span class="pill-icon">⚡</span> Озвучка книги
+        </button>
+        <button class="nav-pill" data-tab="dictionary">
+          <span class="pill-icon">📖</span> Словарь ударений (<span id="tabDictCount">76</span>)
+        </button>
+        <button class="nav-pill" data-tab="voices">
+          <span class="pill-icon">👤</span> Голоса
+        </button>
+        <button class="nav-pill" data-tab="settings">
+          <span class="pill-icon">⚙️</span> Настройки
+        </button>
+      </nav>
+
+      <!-- Status Indicator -->
+      <div class="ai-status-card">
+        <div class="ai-header">
+          <span class="sparkle">✦</span>
+          <span>FLASH AUDIO S2</span>
+        </div>
+        <div class="ai-body">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText" class="status-label">Проверка сервера...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- TAB 1: STUDIO -->
+    <section id="tab-studio" class="tab-pane active">
+      <div class="main-work-grid">
+        
+        <!-- LEFT COLUMN: INPUT TEXT & FILE & CHUNKS -->
+        <div class="work-col-left">
+          
+          <!-- 1. FILE UPLOAD BOX -->
+          <div class="bento-card upload-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">1. Загрузка файла (PDF / TXT)</h3>
+                <p class="card-subtitle">Перетащите документ или выберите файл на компьютере</p>
+              </div>
+              <span class="format-pill">PDF • TXT • MD</span>
+            </div>
+
+            <div class="drop-zone-main" id="dropZone">
+              <input type="file" id="fileInput" accept=".pdf,.txt,.md" style="display:none">
+              <div class="drop-illustration">
+                <div class="file-icon-box">📄</div>
+              </div>
+              <div class="drop-text-group">
+                <h4 id="vaultTitle">Перетащите PDF или текстовый файл сюда</h4>
+                <p id="vaultSub">или нажмите на эту область для выбора файла</p>
+              </div>
+              <button class="btn-select-file" id="btnChooseFile" type="button">
+                📁 Выбрать файл с диска
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. TEXT EDITOR BOX -->
+          <div class="bento-card text-editor-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">2. Текст для озвучки</h3>
+                <p class="card-subtitle">Текст извлеченный из файла или вставленный вручную</p>
+              </div>
+              <div class="text-meta-pills">
+                <span class="stat-badge">Символов: <strong id="statCharCount">0</strong></span>
+                <button class="btn-sm-text" id="btnClearText">Очистить</button>
+                <button class="btn-sm-text" id="btnCopyText">📋 Копировать</button>
+              </div>
+            </div>
+
+            <div class="textarea-wrapper">
+              <textarea id="rawTextInput" class="main-textarea" placeholder="Вставьте сюда любой текст книги, статьи или главы, либо загрузите PDF файл выше..."></textarea>
+            </div>
+
+            <div class="editor-actions-bar">
+              <button class="btn-emerald flex-1" id="btnApplyStressPreview">
+                <span>🔍 Разобрать текст и расставить ударения</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. CHUNKS PREVIEW & EDITING -->
+          <div class="bento-card chunks-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">3. Фрагменты текста (Чанки)</h3>
+                <p class="card-subtitle">Каждый фрагмент озвучивается выразительно с ударениями от референса</p>
+              </div>
+              <span class="badge-pill" id="activeChunksCountBadge">0 чанков</span>
+            </div>
+
+            <div id="chunksGrid" class="chunks-cards-grid">
+              <div class="empty-chunks-placeholder">
+                <div class="placeholder-icon">✍️</div>
+                <h4>Чанки еще не сформированы</h4>
+                <p>Загрузите PDF/TXT файл или вставьте текст в поле выше и нажмите кнопку <strong>«Разобрать текст и расставить ударения»</strong>.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: VOICE, AUDIO PARAMS, PIPELINE PROGRESS & PLAYER -->
+        <div class="work-col-right">
+          
+          <!-- 1. ACTIVE VOICE CARD -->
+          <div class="bento-card voice-hero-card">
+            <div class="voice-hero-top">
+              <div class="speaker-pill">
+                <span class="sp-icon">🎙️</span>
+                <div>
+                  <span class="sp-tag">Голос диктора</span>
+                  <strong class="sp-name" id="activeVoiceName">Мой голос (Default)</strong>
+                </div>
+              </div>
+              <div class="voice-action-btns">
+                <button class="icon-circle-btn" id="btnListenRef" title="Воспроизвести эталон голоса">▶️</button>
+                <button class="icon-circle-btn" id="btnStopRef" title="Остановить воспроизведение">⏹️</button>
+              </div>
+            </div>
+
+            <div class="voice-sample-box">
+              <div class="wave-mini">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <p class="voice-quote" id="voiceSampleCaption">«Случилось так, что Панду умер молодым, и его пятеро сыновей...»</p>
+            </div>
+          </div>
+
+          <!-- 2. AUDIO SETTINGS & START BUTTON -->
+          <div class="bento-card settings-card">
+            <div class="card-header-simple">
+              <h3 class="card-title">Параметры аудио</h3>
+              <span class="format-badge" id="badgeFormat">MP3 (256k)</span>
+            </div>
+
+            <div class="form-group">
+              <label>Формат итогового файла</label>
+              <div class="segmented-control" id="formatToggle">
+                <button class="seg-btn active" data-value="mp3">MP3 (256 kbps)</button>
+                <button class="seg-btn" data-value="wav">WAV (Hi-Fi)</button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Пауза между чанками: <strong id="valPause">0.6</strong>с</label>
+                <input type="range" id="paramPause" min="0.0" max="2.0" step="0.1" value="0.6" class="custom-range">
+              </div>
+              <div class="form-group flex-1">
+                <label>Скорость: <strong id="valSpeed">1.0</strong>x</label>
+                <input type="range" id="paramSpeed" min="0.8" max="1.4" step="0.05" value="1.0" class="custom-range">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Имя итогового файла</label>
+              <input type="text" id="outputNameInput" class="custom-input" placeholder="Например: Аудиокнига_Глава_1">
+            </div>
+
+            <!-- Big Action Button -->
+            <button class="btn-start-large" id="btnStartTTS">
+              <span>🚀 Начать озвучку книги</span>
+            </button>
+          </div>
+
+          <!-- 3. PIPELINE PROGRESS & FINAL AUDIO PLAYER (Deep Forest Emerald) -->
+          <div class="bento-card emerald-pipeline-card">
+            <div class="overview-header">
+              <div>
+                <h3 class="overview-title">Прогресс генерации</h3>
+                <p class="overview-desc" id="pipelineStatusMessage">Ожидание запуска задачи...</p>
+              </div>
+              <div class="badge-scale">
+                <span class="scale-label">ЧАНКИ</span>
+                <span class="scale-val" id="overviewChunkCount">0 / 0</span>
+              </div>
+            </div>
+
+            <!-- Milestones Bar -->
+            <div class="milestones-track">
+              <div class="milestone-labels">
+                <span class="ms-label active" id="msLoad">1. ТЕКСТ</span>
+                <span class="ms-label" id="msStress">2. УДАРЕНИЯ</span>
+                <span class="ms-label" id="msChunk">3. ЧАНКИ</span>
+                <span class="ms-label" id="msTTS">4. FLASH AUDIO</span>
+                <span class="ms-label" id="msReady">5. ГОТОВО</span>
+              </div>
+
+              <div class="timeline-bar-wrap">
+                <div class="timeline-bar-fill" id="timelineBarFill"></div>
+                <div class="timeline-avatar" id="timelineAvatar">
+                  <div class="avatar-mini">🎙️</div>
+                  <div class="avatar-tooltip" id="timelineTooltip">Готов к работе</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Final Audio Player Box -->
+            <div id="finalPlayerBox" class="final-player-box hidden">
+              <div class="final-meta">
+                <span class="final-badge">🎉 Аудиокнига собрана!</span>
+                <span id="finalFilenameText" class="final-filename">audiobook.mp3</span>
+              </div>
+              <audio id="mainAudioPlayer" controls class="custom-audio-player"></audio>
+              <a id="btnDownloadFinal" href="#" download class="btn-white-pill">
+                ⬇️ Скачать готовую аудиокнигу
+              </a>
+            </div>
+
+            <div class="pipeline-footer-stats">
+              <span>Нормализация: <strong>loudnorm EBU R128</strong></span>
+              <span>Модель: <strong>Fish Audio S2</strong></span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: DICTIONARY -->
+    <section id="tab-dictionary" class="tab-pane">
+      <div class="bento-card full-tab-card">
+        <div class="card-header-simple">
+          <div>
+            <h2 class="card-title">Словарь ударений и фонетики</h2>
+            <p class="card-subtitle">Словарь сохраняется в файле <code>data/dictionaries/default.json</code> и применяется при разборе текста.</p>
+          </div>
+          <div class="stat-badge">
+            Всего слов: <strong id="dictTotalCount">76</strong>
+          </div>
+        </div>
+
+        <div class="dict-create-box">
+          <input type="text" id="dictNewWord" class="custom-input flex-1" placeholder="Исходное слово без ударения (напр. Санджая)">
+          <input type="text" id="dictNewRepl" class="custom-input flex-1" placeholder="Слово с ударением (напр. Санджа́я)">
+          <button class="btn-outline-pill" id="btnInsertStress" type="button" title="Вставить знак ударения">
+            Вставить знак ́
+          </button>
+          <button class="btn-emerald" id="btnAddDictWord" type="button">
+            ➕ Добавить слово
+          </button>
+        </div>
+
+        <div class="dict-search-wrap">
+          <input type="text" id="dictSearch" class="custom-input" placeholder="🔎 Поиск по словам и заменам в словаре...">
+        </div>
+
+        <div class="dict-table-wrap">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>Исходное слово</th>
+                <th>С ударением / Фонетической заменой</th>
+                <th style="width: 120px; text-align: right;">Действие</th>
+              </tr>
+            </thead>
+            <tbody id="dictTableBody">
+              <!-- JS rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: VOICES -->
+    <section id="tab-voices" class="tab-pane">
+      <div class="main-work-grid">
+        <div class="bento-card">
+          <div class="card-header-simple">
+            <div>
+              <h3 class="card-title">Активные голосовые профили</h3>
+              <p class="card-subtitle">Референсные аудиофайлы для клонирования голоса</p>
+            </div>
+          </div>
+          <div id="voicesListContainer" class="voices-list-wrap">
+            <!-- JS rendered -->
+          </div>
+        </div>
+
+        <div class="bento-card">
+          <div class="card-header-simple">
+            <div>
+              <h3 class="card-title">Добавить новый голос</h3>
+              <p class="card-subtitle">Загрузите чистую аудиозапись речи (10-30 сек) и текст</p>
+            </div>
+          </div>
+          <form id="newVoiceForm" class="new-voice-form">
+            <div class="form-group">
+              <label>Название профиля</label>
+              <input type="text" id="newVoiceName" class="custom-input" placeholder="Например: Мой_Голос_Студия" required>
+            </div>
+            <div class="form-group">
+              <label>Файл речи (.wav / .mp3)</label>
+              <input type="file" id="newVoiceAudio" accept=".wav,.mp3" class="custom-input" required>
+            </div>
+            <div class="form-group">
+              <label>Текст, произнесенный в аудиофайле</label>
+              <textarea id="newVoiceText" rows="4" class="custom-textarea" placeholder="Введите точный текст, произнесенный на записи..." required></textarea>
+            </div>
+            <button type="submit" class="btn-emerald full-width">Сохранить голос</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS -->
+    <section id="tab-settings" class="tab-pane">
+      <div class="bento-card max-w-700">
+        <div class="card-header-simple">
+          <div>
+            <h3 class="card-title">Настройки нейросети</h3>
+            <p class="card-subtitle">Параметры подключения к локальному серверу Flash / Fish Audio S2</p>
+          </div>
+        </div>
+
+        <div class="settings-body">
+          <div class="form-group">
+            <label>Адрес API сервера модели</label>
+            <div class="input-with-btn">
+              <input type="text" id="settingApiUrl" class="custom-input" value="http://127.0.0.1:8020/generate" readonly>
+            </div>
+            <small class="helper-text">Порт по умолчанию: 8020.</small>
+          </div>
+
+          <div class="instruction-box">
+            <h4>💡 Как запустить локальный сервер Fish Audio S2:</h4>
+            <p>В терминале в папке вашей модели выполните:</p>
+            <pre><code>python3 -m fish_audio.api --port 8020</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
