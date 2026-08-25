@@ -404,6 +404,51 @@ async function deleteDictWord(word) {
   }
 }
 
+let chapterTimers = {};
+
+function cancelAllOperations() {
+  isBatchRunning = false;
+  if (currentSessionId) {
+    fetch(`/api/cancel/${currentSessionId}`, { method: 'POST' }).catch(() => {});
+  }
+  if (progressInterval) {
+    clearInterval(progressInterval);
+    progressInterval = null;
+  }
+  Object.values(chapterTimers).forEach(t => clearInterval(t));
+  chapterTimers = {};
+
+  // Reset all generating chapters to idle
+  loadedChapters.forEach(chap => {
+    if (chap.status === 'generating') {
+      chap.status = 'idle';
+    }
+  });
+  renderChaptersList();
+
+  const btnStopGen = document.getElementById('btnStopGeneration');
+  if (btnStopGen) btnStopGen.classList.add('hidden');
+
+  const btnStartTTS = document.getElementById('btnStartTTS');
+  if (btnStartTTS) {
+    btnStartTTS.disabled = false;
+    btnStartTTS.textContent = '🚀 Начать озвучку книги';
+  }
+
+  const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
+  if (btnSynthesizeAll) {
+    btnSynthesizeAll.disabled = false;
+    btnSynthesizeAll.textContent = '⚡ Озвучить все главы';
+  }
+
+  const statusMsg = document.getElementById('pipelineStatusMessage');
+  if (statusMsg) statusMsg.textContent = '⏹️ Озвучка остановлена пользователем';
+  updateTimeline(0, 'Остановлено');
+
+  // Reset chunk cards to pending
+  renderChunksGrid(activeChunks);
+}
+
 // --- Main Studio Interactions ---
 function initStudio() {
   const dropZone = document.getElementById('dropZone');
@@ -475,6 +520,7 @@ function initStudio() {
   // Clear text button
   if (btnClearText) {
     btnClearText.addEventListener('click', () => {
+      cancelAllOperations();
       rawTextInput.value = '';
       statCharCount.textContent = '0';
       loadedChapters = [];
@@ -640,27 +686,8 @@ function initStudio() {
   // Stop Generation Button (Square/Pill)
   const btnStopGen = document.getElementById('btnStopGeneration');
   if (btnStopGen) {
-    btnStopGen.addEventListener('click', async () => {
-      isBatchRunning = false;
-      if (currentSessionId) {
-        try {
-          await fetch(`/api/cancel/${currentSessionId}`, { method: 'POST' });
-        } catch (e) {}
-      }
-      if (progressInterval) clearInterval(progressInterval);
-      btnStopGen.classList.add('hidden');
-      if (btnStartTTS) {
-        btnStartTTS.disabled = false;
-        btnStartTTS.textContent = '🚀 Начать озвучку книги';
-      }
-      const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
-      if (btnSynthesizeAll) {
-        btnSynthesizeAll.disabled = false;
-        btnSynthesizeAll.textContent = '⚡ Озвучить все главы';
-      }
-      const statusMsg = document.getElementById('pipelineStatusMessage');
-      if (statusMsg) statusMsg.textContent = '⏹️ Озвучка остановлена пользователем';
-      updateTimeline(0, 'Остановлено');
+    btnStopGen.addEventListener('click', () => {
+      cancelAllOperations();
     });
   }
 
@@ -813,6 +840,12 @@ async function synthesizeSingleChapter(chapId) {
   const chap = loadedChapters.find(c => c.id === chapId);
   if (!chap) return;
 
+  // Clear any existing active session timers
+  if (chapterTimers[chapId]) {
+    clearInterval(chapterTimers[chapId]);
+    delete chapterTimers[chapId];
+  }
+
   showChapterChunks(chapId);
 
   // Update card UI
@@ -854,6 +887,8 @@ function trackChapterProgress(chapId, sessionId) {
   const chap = loadedChapters.find(c => c.id === chapId);
   startProgressPolling();
 
+  if (chapterTimers[chapId]) clearInterval(chapterTimers[chapId]);
+
   const checkInterval = setInterval(async () => {
     try {
       const res = await fetch(`/api/progress/${sessionId}`);
@@ -862,13 +897,22 @@ function trackChapterProgress(chapId, sessionId) {
 
       if (data.status === 'completed') {
         clearInterval(checkInterval);
+        delete chapterTimers[chapId];
         if (chap) {
           chap.status = 'done';
           chap.audio_url = data.output_url;
           renderChaptersList();
         }
+      } else if (data.status === 'cancelled') {
+        clearInterval(checkInterval);
+        delete chapterTimers[chapId];
+        if (chap) {
+          chap.status = 'idle';
+          renderChaptersList();
+        }
       } else if (data.status === 'error') {
         clearInterval(checkInterval);
+        delete chapterTimers[chapId];
         if (chap) {
           chap.status = 'error';
           renderChaptersList();
@@ -876,6 +920,8 @@ function trackChapterProgress(chapId, sessionId) {
       }
     } catch (e) {}
   }, 1200);
+
+  chapterTimers[chapId] = checkInterval;
 }
 
 async function runBatchAllChapters() {
