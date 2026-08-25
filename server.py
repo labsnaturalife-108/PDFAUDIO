@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import asyncio
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -256,10 +257,11 @@ def open_output_folder():
     import subprocess, sys
 
     if sys.platform == "darwin":
-        try:
+        files = list(OUTPUT_DIR.glob("*.mp3")) + list(OUTPUT_DIR.glob("*.wav"))
+        if files:
+            subprocess.run(["open", "-R", str(files[0].resolve())], check=False)
+        else:
             subprocess.run(["open", p], check=False)
-        except Exception:
-            pass
     elif sys.platform == "win32":
         try:
             os.startfile(p)
