@@ -562,6 +562,81 @@ function initStudio() {
     });
   }
 
+  // Split by fixed size button (~10 000 chars)
+  const btnSplitFixed = document.getElementById('btnSplitFixed');
+  if (btnSplitFixed) {
+    btnSplitFixed.addEventListener('click', () => {
+      const text = rawTextInput.value.trim();
+      if (!text) {
+        alert('Сначала загрузите или вставьте текст книги!');
+        return;
+      }
+      const paragraphs = text.split('\n\n');
+      let parts = [];
+      let cur = [];
+      let curLen = 0;
+      let pIdx = 1;
+
+      paragraphs.forEach(p => {
+        cur.push(p);
+        curLen += p.length + 2;
+        if (curLen >= 10000) {
+          const body = cur.join('\n\n').trim();
+          parts.push({
+            id: `chapter_${pIdx}`,
+            index: pIdx,
+            title: `Часть ${pIdx}`,
+            text: body,
+            char_count: body.length,
+            chunks: [],
+            status: 'idle',
+            audio_url: null
+          });
+          cur = [];
+          curLen = 0;
+          pIdx++;
+        }
+      });
+
+      if (cur.length > 0) {
+        const body = cur.join('\n\n').trim();
+        parts.push({
+          id: `chapter_${pIdx}`,
+          index: pIdx,
+          title: `Часть ${pIdx}`,
+          text: body,
+          char_count: body.length,
+          chunks: [],
+          status: 'idle',
+          audio_url: null
+        });
+      }
+
+      parts.forEach(part => {
+        const sentences = part.text.replace(/\r\n/g, '\n').split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
+        let chs = [];
+        let curChunk = '';
+        sentences.forEach(s => {
+          if (curChunk.length + s.length > 1000 && curChunk.length > 0) {
+            chs.push(curChunk);
+            curChunk = s;
+          } else {
+            curChunk = curChunk ? curChunk + ' ' + s : s;
+          }
+        });
+        if (curChunk) chs.push(curChunk);
+        part.chunks = chs;
+      });
+
+      loadedChapters = parts;
+      renderChaptersList();
+      if (loadedChapters.length > 0) {
+        showChapterChunks(loadedChapters[0].id);
+      }
+      alert(`Книга нарезана на ${parts.length} частей (по ~10 тыс. символов).`);
+    });
+  }
+
   // Synthesize ALL Chapters Sequentially
   if (btnSynthesizeAll) {
     btnSynthesizeAll.addEventListener('click', async () => {
