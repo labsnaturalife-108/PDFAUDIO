@@ -281,9 +281,14 @@
                 <h3 class="overview-title">Прогресс генерации</h3>
                 <p class="overview-desc" id="pipelineStatusMessage">Ожидание запуска задачи...</p>
               </div>
-              <div class="badge-scale">
-                <span class="scale-label">ЧАНКИ</span>
-                <span class="scale-val" id="overviewChunkCount">0 / 0</span>
+              <div class="pipeline-header-controls">
+                <button class="btn-stop-generation hidden" id="btnStopGeneration" type="button" title="Прервать текущую генерацию">
+                  ⏹️ Стоп
+                </button>
+                <div class="badge-scale">
+                  <span class="scale-label">ЧАНКИ</span>
+                  <span class="scale-val" id="overviewChunkCount">0 / 0</span>
+                </div>
               </div>
             </div>
 

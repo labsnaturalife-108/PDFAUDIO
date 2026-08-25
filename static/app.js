@@ -637,6 +637,33 @@ function initStudio() {
     });
   }
 
+  // Stop Generation Button (Square/Pill)
+  const btnStopGen = document.getElementById('btnStopGeneration');
+  if (btnStopGen) {
+    btnStopGen.addEventListener('click', async () => {
+      isBatchRunning = false;
+      if (currentSessionId) {
+        try {
+          await fetch(`/api/cancel/${currentSessionId}`, { method: 'POST' });
+        } catch (e) {}
+      }
+      if (progressInterval) clearInterval(progressInterval);
+      btnStopGen.classList.add('hidden');
+      if (btnStartTTS) {
+        btnStartTTS.disabled = false;
+        btnStartTTS.textContent = '🚀 Начать озвучку книги';
+      }
+      const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
+      if (btnSynthesizeAll) {
+        btnSynthesizeAll.disabled = false;
+        btnSynthesizeAll.textContent = '⚡ Озвучить все главы';
+      }
+      const statusMsg = document.getElementById('pipelineStatusMessage');
+      if (statusMsg) statusMsg.textContent = '⏹️ Озвучка остановлена пользователем';
+      updateTimeline(0, 'Остановлено');
+    });
+  }
+
   // Synthesize ALL Chapters Sequentially
   if (btnSynthesizeAll) {
     btnSynthesizeAll.addEventListener('click', async () => {
@@ -1053,6 +1080,9 @@ function startProgressPolling() {
   const scaleBadge = document.getElementById('overviewChunkCount');
   const btnStartTTS = document.getElementById('btnStartTTS');
   const statusMsg = document.getElementById('pipelineStatusMessage');
+  const btnStopGen = document.getElementById('btnStopGeneration');
+
+  if (btnStopGen) btnStopGen.classList.remove('hidden');
 
   if (btnOpenFolder) {
     btnOpenFolder.onclick = async () => {
@@ -1111,6 +1141,7 @@ function startProgressPolling() {
 
       if (data.status === 'completed') {
         clearInterval(progressInterval);
+        if (btnStopGen) btnStopGen.classList.add('hidden');
         if (btnStartTTS) {
           btnStartTTS.disabled = false;
           btnStartTTS.textContent = '🚀 Начать озвучку книги';
@@ -1125,8 +1156,17 @@ function startProgressPolling() {
           btnDownload.href = data.output_url;
           finalFilename.textContent = data.output_url.split('/').pop();
         }
+      } else if (data.status === 'cancelled') {
+        clearInterval(progressInterval);
+        if (btnStopGen) btnStopGen.classList.add('hidden');
+        if (btnStartTTS) {
+          btnStartTTS.disabled = false;
+          btnStartTTS.textContent = '🚀 Начать озвучку книги';
+        }
+        if (statusMsg) statusMsg.textContent = '⏹️ Озвучка остановлена пользователем.';
       } else if (data.status === 'error') {
         clearInterval(progressInterval);
+        if (btnStopGen) btnStopGen.classList.add('hidden');
         if (btnStartTTS) {
           btnStartTTS.disabled = false;
           btnStartTTS.textContent = '🚀 Начать озвучку книги';

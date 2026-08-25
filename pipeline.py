@@ -22,15 +22,17 @@ class PipelineProgress:
         self.output_file: Optional[Path] = None
 
 class TextToSpeechPipeline:
-    def __init__(
-        self,
-        dictionary: Optional[StressDictionary] = None,
-        voice_manager: Optional[VoiceManager] = None,
-        tts_client: Optional[FishAudioClient] = None
-    ):
-        self.dict = dictionary or StressDictionary()
-        self.voice_mgr = voice_manager or VoiceManager()
+    def __init__(self, tts_client: FishAudioClient = None, voice_manager: VoiceManager = None, dictionary: StressDictionary = None):
         self.tts = tts_client or FishAudioClient()
+        self.voice_mgr = voice_manager or VoiceManager()
+        self.dict = dictionary or StressDictionary()
+        self.cancelled_sessions = set()
+
+    def cancel(self, session_id: str):
+        self.cancelled_sessions.add(session_id)
+
+    def is_cancelled(self, session_id: str) -> bool:
+        return session_id in self.cancelled_sessions
 
     def prepare_text(self, input_text_or_file: str | Path, max_chunk_len: int = DEFAULT_CHUNK_LENGTH) -> tuple[str, str, List[str]]:
         """
@@ -94,6 +96,14 @@ class TextToSpeechPipeline:
         chunk_audio_files: List[Path] = []
 
         for i, chunk in enumerate(chunks):
+            # Check if session was cancelled
+            if self.is_cancelled(progress.session_id):
+                progress.status = "cancelled"
+                progress.message = "Генерация отменена пользователем."
+                if progress_callback:
+                    progress_callback(progress)
+                return progress
+
             chunk_file = session_cache_dir / f"audio_chunk_{i:04d}.wav"
             progress.current_chunk = i + 1
             progress.chunk_statuses[i]["status"] = "generating"

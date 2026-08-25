@@ -253,6 +253,15 @@ def start_generation(req: GenerateRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(run_pipeline_task, prog.session_id, req)
     return {"session_id": prog.session_id, "total_chunks": len(chunk_list)}
 
+@app.post("/api/cancel/{session_id}")
+def cancel_generation(session_id: str):
+    if session_id in sessions:
+        prog = sessions[session_id]
+        prog.status = "cancelled"
+        prog.message = "Озвучка отменена пользователем."
+    pipeline.cancel(session_id)
+    return {"status": "cancelled", "session_id": session_id}
+
 @app.get("/api/progress/{session_id}")
 def get_progress(session_id: str):
     if session_id not in sessions:
