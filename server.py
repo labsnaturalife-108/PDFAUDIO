@@ -251,18 +251,43 @@ def serve_chunk_audio(session_id: str, filename: str):
 
 @app.post("/api/open-output-folder")
 def open_output_folder():
-    try:
-        import subprocess, sys
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        if sys.platform == "darwin":
-            subprocess.run(["open", str(OUTPUT_DIR)])
-        elif sys.platform == "win32":
-            os.startfile(str(OUTPUT_DIR))
-        else:
-            subprocess.run(["xdg-open", str(OUTPUT_DIR)])
-        return {"status": "opened", "path": str(OUTPUT_DIR)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    p = str(OUTPUT_DIR.resolve())
+    import subprocess, sys
+
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(["open", p], check=False)
+        except Exception:
+            pass
+    elif sys.platform == "win32":
+        try:
+            os.startfile(p)
+        except Exception:
+            pass
+    else:
+        try:
+            subprocess.run(["xdg-open", p], check=False)
+        except Exception:
+            pass
+
+    return {"status": "opened", "path": p}
+
+@app.get("/api/outputs")
+def get_output_files():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    files = []
+    for f in sorted(OUTPUT_DIR.glob("*"), key=lambda x: x.stat().st_mtime, reverse=True):
+        if f.is_file() and not f.name.startswith(".") and f.suffix.lower() in [".mp3", ".wav", ".m4b", ".m4a"]:
+            size_mb = round(f.stat().st_size / (1024 * 1024), 2)
+            time_str = time.strftime("%d.%m.%Y %H:%M", time.localtime(f.stat().st_mtime))
+            files.append({
+                "name": f.name,
+                "size_mb": size_mb,
+                "date": time_str,
+                "url": f"/api/audio/output/{f.name}"
+            })
+    return {"files": files, "folder_path": str(OUTPUT_DIR.resolve())}
 
 @app.get("/api/audio/output/{filename}")
 def serve_output_audio(filename: str):

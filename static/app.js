@@ -12,7 +12,85 @@ document.addEventListener('DOMContentLoaded', () => {
   initVoices();
   initDictionary();
   initStudio();
+  initOutputModal();
 });
+
+// --- Output Folder Modal & Explorer ---
+function initOutputModal() {
+  const modal = document.getElementById('outputFolderModal');
+  const btnClose = document.getElementById('btnCloseModal');
+  const btnTriggerFinder = document.getElementById('btnTriggerFinderOpen');
+  const btnOpenFolder = document.getElementById('btnOpenFolder');
+
+  async function openModal() {
+    if (modal) modal.classList.remove('hidden');
+    // Try to trigger OS finder open in background
+    try {
+      fetch('/api/open-output-folder', { method: 'POST' });
+    } catch (e) {}
+    loadOutputFiles();
+  }
+
+  function closeModal() {
+    if (modal) modal.classList.add('hidden');
+  }
+
+  if (btnOpenFolder) btnOpenFolder.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
+
+  if (btnTriggerFinder) {
+    btnTriggerFinder.addEventListener('click', async () => {
+      try {
+        await fetch('/api/open-output-folder', { method: 'POST' });
+        btnTriggerFinder.textContent = '✓ Открыто';
+        setTimeout(() => btnTriggerFinder.textContent = '🖥️ Открыть в Finder', 2000);
+      } catch (e) {
+        alert('Не удалось открыть Finder');
+      }
+    });
+  }
+}
+
+async function loadOutputFiles() {
+  const container = document.getElementById('modalFilesList');
+  const pathLabel = document.getElementById('modalFolderPath');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/outputs');
+    const data = await res.json();
+    if (pathLabel && data.folder_path) pathLabel.textContent = data.folder_path;
+
+    if (!data.files || data.files.length === 0) {
+      container.innerHTML = '<div class="empty-state-mini">В папке output пока нет готовых аудиофайлов.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    data.files.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'file-item-card';
+      card.innerHTML = `
+        <div class="file-item-top">
+          <span class="file-item-title">🎵 ${escapeHtml(f.name)}</span>
+          <span class="file-item-meta">${f.size_mb} MB • ${f.date}</span>
+        </div>
+        <audio controls class="custom-audio-player" src="${f.url}"></audio>
+        <div class="file-item-actions">
+          <a href="${f.url}" download="${escapeHtml(f.name)}" class="btn-sm-text">⬇️ Скачать этот файл</a>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state-mini">Ошибка загрузки списка файлов.</div>';
+  }
+}
 
 // --- Tab Navigation ---
 function initTabs() {

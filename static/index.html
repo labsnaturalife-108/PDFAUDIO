@@ -368,6 +368,26 @@
       </div>
     </section>
 
+  <!-- Output Files Explorer Modal -->
+  <div id="outputFolderModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">📁 Готовые аудиокниги (папка output)</h3>
+          <p class="modal-subtitle" id="modalFolderPath">/Users/jeka/Documents/Video to MP3/PDFAUDIO/output</p>
+        </div>
+        <div class="modal-header-actions">
+          <button class="btn-outline-pill" id="btnTriggerFinderOpen">🖥️ Открыть в Finder</button>
+          <button class="icon-circle-btn sm" id="btnCloseModal">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div id="modalFilesList" class="modal-files-list">
+          <div class="empty-state-mini">Загрузка файлов...</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
