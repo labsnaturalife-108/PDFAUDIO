@@ -135,25 +135,25 @@ async def extract_file_text(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
 
     try:
-        raw_text = DocumentExtractor.extract(temp_path)
-        base_title = Path(filename).stem
-        chapters_raw = ChapterParser.split_into_chapters(raw_text, default_book_title=base_title)
+        extracted = DocumentExtractor.extract(temp_path)
+        raw_text = extracted["raw_text"]
+        chapters_raw = extracted["chapters_raw"]
         
         # Enrich chapters with stressed text and chunks
         processed_chapters = []
         all_chunks = []
-        for chap in chapters_raw:
+        for idx, chap in enumerate(chapters_raw):
             stressed = dictionary.apply(chap["text"])
             chap_chunks = TextChunker.split_into_chunks(stressed)
             all_chunks.extend(chap_chunks)
             processed_chapters.append({
-                "id": chap["id"],
-                "index": chap["index"],
+                "id": chap.get("id") or f"chapter_{idx + 1}",
+                "index": idx + 1,
                 "title": chap["title"],
                 "text": chap["text"],
                 "stressed_text": stressed,
                 "chunks": chap_chunks,
-                "char_count": chap["char_count"],
+                "char_count": len(chap["text"]),
                 "chunk_count": len(chap_chunks),
                 "status": "idle",
                 "audio_url": None
