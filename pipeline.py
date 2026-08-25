@@ -22,10 +22,15 @@ class PipelineProgress:
         self.output_file: Optional[Path] = None
 
 class TextToSpeechPipeline:
-    def __init__(self, tts_client: FishAudioClient = None, voice_manager: VoiceManager = None, dictionary: StressDictionary = None):
-        self.tts = tts_client or FishAudioClient()
-        self.voice_mgr = voice_manager or VoiceManager()
+    def __init__(
+        self,
+        dictionary: Optional[StressDictionary] = None,
+        voice_manager: Optional[VoiceManager] = None,
+        tts_client: Optional[FishAudioClient] = None
+    ):
         self.dict = dictionary or StressDictionary()
+        self.voice_mgr = voice_manager or VoiceManager()
+        self.tts = tts_client or FishAudioClient()
         self.cancelled_sessions = set()
 
     def cancel(self, session_id: str):

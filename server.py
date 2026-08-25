@@ -37,7 +37,11 @@ app.add_middleware(
 dictionary = StressDictionary()
 voice_mgr = VoiceManager()
 tts_client = FishAudioClient()
-pipeline = TextToSpeechPipeline(dictionary, voice_mgr, tts_client)
+pipeline = TextToSpeechPipeline(
+    dictionary=dictionary,
+    voice_manager=voice_mgr,
+    tts_client=tts_client
+)
 
 # In-memory session tracking
 sessions: Dict[str, PipelineProgress] = {}
