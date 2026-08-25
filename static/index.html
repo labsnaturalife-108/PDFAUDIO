@@ -109,11 +109,36 @@
             </div>
           </div>
 
-          <!-- 3. CHUNKS PREVIEW & EDITING -->
+          <!-- 3. CHAPTERS MANAGEMENT BOX -->
+          <div class="bento-card chapters-card" id="chaptersSection">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">3. Главы книги (Оглавление)</h3>
+                <p class="card-subtitle">Книга автоматически разбита на главы. Озвучивайте главы по отдельности или удаляйте лишние.</p>
+              </div>
+              <div class="chapters-header-actions">
+                <span class="badge-pill" id="chaptersCountBadge">0 глав</span>
+                <button class="btn-emerald btn-sm" id="btnSynthesizeAllChapters" type="button" title="Озвучить все главы по очереди">
+                  ⚡ Озвучить все главы
+                </button>
+              </div>
+            </div>
+
+            <!-- Chapters List Grid -->
+            <div id="chaptersList" class="chapters-list-grid">
+              <div class="empty-chapters-placeholder">
+                <div class="placeholder-icon">📚</div>
+                <h4>Главы книги еще не загружены</h4>
+                <p>Загрузите PDF или текстовый файл книги, и она автоматически разделится по главам.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. CHUNKS PREVIEW & EDITING -->
           <div class="bento-card chunks-card">
             <div class="card-header-simple">
               <div>
-                <h3 class="card-title">3. Фрагменты текста (Чанки)</h3>
+                <h3 class="card-title">4. Фрагменты выбранной главы (Чанки)</h3>
                 <p class="card-subtitle">Каждый фрагмент озвучивается выразительно с ударениями от референса</p>
               </div>
               <span class="badge-pill" id="activeChunksCountBadge">0 чанков</span>
@@ -123,7 +148,7 @@
               <div class="empty-chunks-placeholder">
                 <div class="placeholder-icon">✍️</div>
                 <h4>Чанки еще не сформированы</h4>
-                <p>Загрузите PDF/TXT файл или вставьте текст в поле выше и нажмите кнопку <strong>«Разобрать текст и расставить ударения»</strong>.</p>
+                <p>Выберите главу выше или нажмите кнопку <strong>«Разобрать текст и расставить ударения»</strong>.</p>
               </div>
             </div>
           </div>

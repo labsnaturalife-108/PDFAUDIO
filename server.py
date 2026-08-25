@@ -18,6 +18,7 @@ from config import (
 from extractor import DocumentExtractor
 from stress_dict import StressDictionary
 from chunker import TextChunker
+from chapter_parser import ChapterParser
 from voice_manager import VoiceManager
 from tts_client import FishAudioClient
 from pipeline import TextToSpeechPipeline, PipelineProgress
@@ -128,22 +129,43 @@ def delete_dictionary_entry(word: str):
 
 @app.post("/api/extract")
 async def extract_file_text(file: UploadFile = File(...)):
-    filename = file.filename or "temp_file"
+    filename = file.filename or "Книга"
     temp_path = CACHE_DIR / f"upload_{filename}"
     with open(temp_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
     try:
         raw_text = DocumentExtractor.extract(temp_path)
-        stressed_text = dictionary.apply(raw_text)
-        chunks = TextChunker.split_into_chunks(stressed_text)
+        base_title = Path(filename).stem
+        chapters_raw = ChapterParser.split_into_chapters(raw_text, default_book_title=base_title)
+        
+        # Enrich chapters with stressed text and chunks
+        processed_chapters = []
+        all_chunks = []
+        for chap in chapters_raw:
+            stressed = dictionary.apply(chap["text"])
+            chap_chunks = TextChunker.split_into_chunks(stressed)
+            all_chunks.extend(chap_chunks)
+            processed_chapters.append({
+                "id": chap["id"],
+                "index": chap["index"],
+                "title": chap["title"],
+                "text": chap["text"],
+                "stressed_text": stressed,
+                "chunks": chap_chunks,
+                "char_count": chap["char_count"],
+                "chunk_count": len(chap_chunks),
+                "status": "idle",
+                "audio_url": None
+            })
+
         return {
             "filename": filename,
             "raw_text": raw_text,
-            "stressed_text": stressed_text,
-            "chunks": chunks,
+            "chapters": processed_chapters,
             "total_chars": len(raw_text),
-            "chunk_count": len(chunks)
+            "total_chapters": len(processed_chapters),
+            "total_chunks": len(all_chunks)
         }
     finally:
         if temp_path.exists():
@@ -152,14 +174,33 @@ async def extract_file_text(file: UploadFile = File(...)):
 @app.post("/api/preview")
 def preview_text(req: PreviewRequest):
     raw_text = DocumentExtractor.clean_text(req.text)
-    stressed_text = dictionary.apply(raw_text)
-    chunks = TextChunker.split_into_chunks(stressed_text, max_chunk_len=req.max_chunk_len)
+    chapters_raw = ChapterParser.split_into_chapters(raw_text, default_book_title="Книга")
+    
+    processed_chapters = []
+    all_chunks = []
+    for chap in chapters_raw:
+        stressed = dictionary.apply(chap["text"])
+        chap_chunks = TextChunker.split_into_chunks(stressed, max_chunk_len=req.max_chunk_len)
+        all_chunks.extend(chap_chunks)
+        processed_chapters.append({
+            "id": chap["id"],
+            "index": chap["index"],
+            "title": chap["title"],
+            "text": chap["text"],
+            "stressed_text": stressed,
+            "chunks": chap_chunks,
+            "char_count": chap["char_count"],
+            "chunk_count": len(chap_chunks),
+            "status": "idle",
+            "audio_url": None
+        })
+
     return {
         "raw_text": raw_text,
-        "stressed_text": stressed_text,
-        "chunks": chunks,
+        "chapters": processed_chapters,
         "total_chars": len(raw_text),
-        "chunk_count": len(chunks)
+        "total_chapters": len(processed_chapters),
+        "total_chunks": len(all_chunks)
     }
 
 def run_pipeline_task(session_id: str, req: GenerateRequest):

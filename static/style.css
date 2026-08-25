@@ -371,6 +371,149 @@ body {
   gap: 12px;
 }
 
+/* --- Chapters Management Section --- */
+.chapters-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chapters-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.chapter-card-item {
+  background: #fafaf9;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.chapter-card-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.chapter-card-item.active-chapter {
+  border-color: var(--bg-emerald);
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(13, 56, 44, 0.15);
+}
+
+.chapter-card-item.generating {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.chapter-card-item.done {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.chapter-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.chapter-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.chapter-icon {
+  font-size: 20px;
+}
+
+.chapter-title-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.chapter-title-input:hover {
+  background: #ffffff;
+  border-color: var(--border-light);
+}
+
+.chapter-title-input:focus {
+  background: #ffffff;
+  border-color: var(--bg-emerald);
+  outline: none;
+}
+
+.chapter-meta-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chapter-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chapter-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-synthesize-chap {
+  background: var(--bg-emerald);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-synthesize-chap:hover {
+  background: var(--bg-emerald-hover);
+}
+
+.btn-synthesize-chap:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.empty-chapters-placeholder {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
 /* --- 3. Chunks Section --- */
 .badge-pill {
   background: #f4f4f5;

@@ -2,9 +2,12 @@
 let currentSessionId = null;
 let progressInterval = null;
 let loadedDictionary = {};
+let loadedChapters = [];
+let activeChapterId = null;
 let activeChunks = [];
 let selectedFormat = 'mp3';
 let voicesData = [];
+let isBatchRunning = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
@@ -34,7 +37,6 @@ function initOutputModal() {
 
   async function openModal() {
     if (modal) modal.classList.remove('hidden');
-    // Try to trigger OS finder open in background
     try {
       fetch('/api/open-output-folder', { method: 'POST' });
     } catch (e) {}
@@ -191,7 +193,6 @@ async function initVoices() {
 
   if (btnQuickAdd) {
     btnQuickAdd.addEventListener('click', () => {
-      // Switch to voices tab
       const voicesTabBtn = document.querySelector('.nav-pill[data-tab="voices"]');
       if (voicesTabBtn) voicesTabBtn.click();
     });
@@ -245,7 +246,6 @@ async function loadVoices() {
     const res = await fetch('/api/voices');
     voicesData = await res.json();
 
-    // Populate voice dropdown on main page
     const select = document.getElementById('voiceSelect');
     if (select) {
       const prevVal = select.value;
@@ -415,6 +415,7 @@ function initStudio() {
   const btnCopyText = document.getElementById('btnCopyText');
   const btnClearText = document.getElementById('btnClearText');
   const statCharCount = document.getElementById('statCharCount');
+  const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
 
   // Format Toggle
   const formatButtons = document.querySelectorAll('#formatToggle .seg-btn');
@@ -476,7 +477,9 @@ function initStudio() {
     btnClearText.addEventListener('click', () => {
       rawTextInput.value = '';
       statCharCount.textContent = '0';
+      loadedChapters = [];
       activeChunks = [];
+      renderChaptersList();
       renderChunksGrid([]);
       updateTimeline(10, 'Текст очищен');
     });
@@ -523,7 +526,7 @@ function initStudio() {
     });
   }
 
-  // Apply Stress & Split into Chunks Preview
+  // Apply Stress & Split into Chapters Preview
   if (btnApplyStress) {
     btnApplyStress.addEventListener('click', async () => {
       const text = rawTextInput.value.trim();
@@ -533,17 +536,22 @@ function initStudio() {
       }
       try {
         btnApplyStress.disabled = true;
-        btnApplyStress.textContent = 'Обработка текста и ударений...';
+        btnApplyStress.textContent = 'Разбиение на главы и ударения...';
         const res = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, max_chunk_len: 1000 })
         });
         const data = await res.json();
-        activeChunks = data.chunks;
-        renderChunksGrid(activeChunks);
+        
+        loadedChapters = data.chapters || [];
+        renderChaptersList();
 
-        updateTimeline(40, `Разбито на ${data.chunks.length} чанков`);
+        if (loadedChapters.length > 0) {
+          showChapterChunks(loadedChapters[0].id);
+        }
+
+        updateTimeline(40, `Книга разбита на ${loadedChapters.length} глав`);
         setMilestoneActive('msChunk');
       } catch (e) {
         alert('Ошибка обработки: ' + e.message);
@@ -554,26 +562,241 @@ function initStudio() {
     });
   }
 
-  // Start TTS Pipeline
-  if (btnStartTTS) {
-    btnStartTTS.addEventListener('click', async () => {
-      const chunkInputs = document.querySelectorAll('.chunk-editor');
-      let chunksToSend = [];
-      if (chunkInputs.length > 0) {
-        chunksToSend = Array.from(chunkInputs).map(i => i.value.trim()).filter(Boolean);
-      }
-
-      const rawText = rawTextInput.value.trim();
-      if (chunksToSend.length === 0 && !rawText) {
-        alert('Нет текста для озвучки! Вставьте текст или загрузите файл.');
+  // Synthesize ALL Chapters Sequentially
+  if (btnSynthesizeAll) {
+    btnSynthesizeAll.addEventListener('click', async () => {
+      if (loadedChapters.length === 0) {
+        alert('Нет загруженных глав для озвучки!');
         return;
       }
+      if (isBatchRunning) {
+        alert('Пакетная озвучка уже выполняется...');
+        return;
+      }
+      await runBatchAllChapters();
+    });
+  }
+
+  // Start TTS for active selected chapter / text
+  if (btnStartTTS) {
+    btnStartTTS.addEventListener('click', async () => {
+      if (activeChapterId) {
+        await synthesizeSingleChapter(activeChapterId);
+      } else if (loadedChapters.length > 0) {
+        await synthesizeSingleChapter(loadedChapters[0].id);
+      } else {
+        const rawText = rawTextInput.value.trim();
+        if (!rawText) {
+          alert('Нет текста для озвучки! Вставьте текст или загрузите файл.');
+          return;
+        }
+        await synthesizeRawText(rawText);
+      }
+    });
+  }
+}
+
+// --- Chapter Management Functions ---
+
+function renderChaptersList() {
+  const container = document.getElementById('chaptersList');
+  const badge = document.getElementById('chaptersCountBadge');
+  if (!container) return;
+
+  if (badge) badge.textContent = `${loadedChapters.length} глав`;
+
+  if (loadedChapters.length === 0) {
+    container.innerHTML = `
+      <div class="empty-chapters-placeholder">
+        <div class="placeholder-icon">📚</div>
+        <h4>Главы книги еще не загружены</h4>
+        <p>Загрузите PDF или текстовый файл книги, и она автоматически разделится по главам.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  loadedChapters.forEach((chap, idx) => {
+    const isCurrentActive = chap.id === activeChapterId;
+    const card = document.createElement('div');
+    card.className = `chapter-card-item ${isCurrentActive ? 'active-chapter' : ''} ${chap.status}`;
+    card.id = `chapCard-${chap.id}`;
+
+    let statusBadge = 'Ожидание';
+    if (chap.status === 'generating') statusBadge = 'Синтез...';
+    if (chap.status === 'done') statusBadge = 'Готово ✓';
+    if (chap.status === 'error') statusBadge = 'Ошибка ✕';
+
+    const estMinutes = Math.max(1, Math.ceil(chap.char_count / 850));
+
+    card.innerHTML = `
+      <div class="chapter-item-top">
+        <div class="chapter-title-group">
+          <span class="chapter-icon">📖</span>
+          <input type="text" class="chapter-title-input" value="${escapeHtml(chap.title)}" 
+                 onchange="updateChapterTitle('${chap.id}', this.value)" title="Нажмите, чтобы переименовать главу">
+        </div>
+        <div class="chapter-meta-group">
+          <span class="stat-badge">${chap.char_count} симв. (~${estMinutes} мин)</span>
+          <span class="chunk-status-chip ${chap.status}" id="chapStatusChip-${chap.id}">${statusBadge}</span>
+        </div>
+      </div>
+
+      <div class="chapter-actions-row">
+        <div class="chapter-left-actions">
+          <button class="btn-synthesize-chap" onclick="synthesizeSingleChapter('${chap.id}')" id="btnSynthChap-${chap.id}">
+            ▶️ Озвучить эту главу
+          </button>
+          <button class="btn-sm-text" onclick="showChapterChunks('${chap.id}')">
+            👁️ Показать чанки (${chap.chunks.length})
+          </button>
+        </div>
+        <button class="btn-del" onclick="deleteChapter('${chap.id}')" title="Удалить главу из очереди">
+          🗑️ Удалить главу
+        </button>
+      </div>
+
+      ${chap.audio_url ? `
+        <div class="chapter-audio-box" style="margin-top: 6px;">
+          <audio controls class="custom-audio-player" src="${chap.audio_url}"></audio>
+          <a href="${chap.audio_url}" download="${escapeHtml(chap.title)}.${selectedFormat}" class="btn-sm-text" style="display:inline-block; margin-top:4px;">⬇️ Скачать аудио главы</a>
+        </div>
+      ` : ''}
+    `;
+    container.appendChild(card);
+  });
+}
+
+function updateChapterTitle(chapId, newTitle) {
+  const chap = loadedChapters.find(c => c.id === chapId);
+  if (chap && newTitle.trim()) {
+    chap.title = newTitle.trim();
+  }
+}
+
+function deleteChapter(chapId) {
+  const chap = loadedChapters.find(c => c.id === chapId);
+  const name = chap ? chap.title : 'эту главу';
+  if (!confirm(`Удалить "${name}"?`)) return;
+
+  loadedChapters = loadedChapters.filter(c => c.id !== chapId);
+  if (activeChapterId === chapId) {
+    activeChapterId = loadedChapters.length > 0 ? loadedChapters[0].id : null;
+    if (activeChapterId) {
+      showChapterChunks(activeChapterId);
+    } else {
+      activeChunks = [];
+      renderChunksGrid([]);
+    }
+  }
+  renderChaptersList();
+}
+
+function showChapterChunks(chapId) {
+  activeChapterId = chapId;
+  const chap = loadedChapters.find(c => c.id === chapId);
+  if (chap) {
+    activeChunks = chap.chunks;
+    renderChunksGrid(activeChunks);
+    document.getElementById('outputNameInput').value = chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
+  }
+  // Re-highlight active card
+  document.querySelectorAll('.chapter-card-item').forEach(c => c.classList.remove('active-chapter'));
+  const activeCard = document.getElementById(`chapCard-${chapId}`);
+  if (activeCard) activeCard.classList.add('active-chapter');
+}
+
+async function synthesizeSingleChapter(chapId) {
+  const chap = loadedChapters.find(c => c.id === chapId);
+  if (!chap) return;
+
+  showChapterChunks(chapId);
+
+  // Update card UI
+  chap.status = 'generating';
+  renderChaptersList();
+
+  const payload = {
+    chunks: chap.chunks,
+    voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
+    output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
+    output_format: selectedFormat,
+    pause_duration: parseFloat(document.getElementById('paramPause').value),
+    speed: parseFloat(document.getElementById('paramSpeed').value),
+    temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
+    instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
+    apply_loudnorm: true
+  };
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Ошибка запуска генерации главы');
+    const data = await res.json();
+    currentSessionId = data.session_id;
+
+    // Track generation and set audio_url when done
+    trackChapterProgress(chapId, data.session_id);
+  } catch (e) {
+    chap.status = 'error';
+    renderChaptersList();
+    alert('Ошибка генерации главы: ' + e.message);
+  }
+}
+
+function trackChapterProgress(chapId, sessionId) {
+  const chap = loadedChapters.find(c => c.id === chapId);
+  startProgressPolling();
+
+  const checkInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/progress/${sessionId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.status === 'completed') {
+        clearInterval(checkInterval);
+        if (chap) {
+          chap.status = 'done';
+          chap.audio_url = data.output_url;
+          renderChaptersList();
+        }
+      } else if (data.status === 'error') {
+        clearInterval(checkInterval);
+        if (chap) {
+          chap.status = 'error';
+          renderChaptersList();
+        }
+      }
+    } catch (e) {}
+  }, 1200);
+}
+
+async function runBatchAllChapters() {
+  isBatchRunning = true;
+  const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
+  if (btnSynthesizeAll) {
+    btnSynthesizeAll.disabled = true;
+    btnSynthesizeAll.textContent = '⏳ Озвучка глав книги...';
+  }
+
+  for (let i = 0; i < loadedChapters.length; i++) {
+    const chap = loadedChapters[i];
+    if (chap.status === 'done') continue; // Skip already finished chapters
+
+    await new Promise((resolve) => {
+      showChapterChunks(chap.id);
+      chap.status = 'generating';
+      renderChaptersList();
 
       const payload = {
-        chunks: chunksToSend.length > 0 ? chunksToSend : null,
-        text: chunksToSend.length === 0 ? rawText : null,
+        chunks: chap.chunks,
         voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
-        output_name: document.getElementById('outputNameInput').value.trim() || null,
+        output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
         output_format: selectedFormat,
         pause_duration: parseFloat(document.getElementById('paramPause').value),
         speed: parseFloat(document.getElementById('paramSpeed').value),
@@ -582,24 +805,79 @@ function initStudio() {
         apply_loudnorm: true
       };
 
-      try {
-        btnStartTTS.disabled = true;
-        btnStartTTS.textContent = '⏳ Синтез аудио...';
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Ошибка запуска генерации');
-        const data = await res.json();
+      fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
         currentSessionId = data.session_id;
         startProgressPolling();
-      } catch (e) {
-        alert('Не удалось начать: ' + e.message);
-        btnStartTTS.disabled = false;
-        btnStartTTS.textContent = '🚀 Начать озвучку книги';
-      }
+
+        const timer = setInterval(async () => {
+          try {
+            const pRes = await fetch(`/api/progress/${data.session_id}`);
+            const pData = await pRes.json();
+            if (pData.status === 'completed') {
+              clearInterval(timer);
+              chap.status = 'done';
+              chap.audio_url = pData.output_url;
+              renderChaptersList();
+              resolve();
+            } else if (pData.status === 'error') {
+              clearInterval(timer);
+              chap.status = 'error';
+              renderChaptersList();
+              resolve();
+            }
+          } catch (e) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 1200);
+      })
+      .catch(e => {
+        chap.status = 'error';
+        renderChaptersList();
+        resolve();
+      });
     });
+  }
+
+  isBatchRunning = false;
+  if (btnSynthesizeAll) {
+    btnSynthesizeAll.disabled = false;
+    btnSynthesizeAll.textContent = '⚡ Озвучить все главы';
+  }
+  alert('Пакетная озвучка всех глав завершена!');
+}
+
+async function synthesizeRawText(rawText) {
+  const payload = {
+    text: rawText,
+    voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
+    output_name: document.getElementById('outputNameInput').value.trim() || null,
+    output_format: selectedFormat,
+    pause_duration: parseFloat(document.getElementById('paramPause').value),
+    speed: parseFloat(document.getElementById('paramSpeed').value),
+    temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
+    instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
+    apply_loudnorm: true
+  };
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Ошибка запуска генерации');
+    const data = await res.json();
+    currentSessionId = data.session_id;
+    startProgressPolling();
+  } catch (e) {
+    alert('Не удалось начать: ' + e.message);
   }
 }
 
@@ -617,24 +895,28 @@ async function handleFileUpload(file) {
 
   const titleEl = document.getElementById('vaultTitle');
   const subEl = document.getElementById('vaultSub');
-  titleEl.textContent = `Чтение: ${file.name}...`;
+  titleEl.textContent = `Чтение и разбивка: ${file.name}...`;
 
   try {
     const res = await fetch('/api/extract', { method: 'POST', body: formData });
     if (!res.ok) throw new Error('Ошибка чтения файла');
     const data = await res.json();
 
-    document.getElementById('rawTextInput').value = data.stressed_text;
+    document.getElementById('rawTextInput').value = data.raw_text;
     document.getElementById('statCharCount').textContent = data.total_chars;
     document.getElementById('outputNameInput').value = file.name.replace(/\.[^/.]+$/, "");
 
-    activeChunks = data.chunks;
-    renderChunksGrid(activeChunks);
+    loadedChapters = data.chapters || [];
+    renderChaptersList();
 
-    titleEl.textContent = `✓ Загружен: ${file.name}`;
-    subEl.textContent = `${data.total_chars} символов, ${data.chunk_count} фрагментов`;
+    if (loadedChapters.length > 0) {
+      showChapterChunks(loadedChapters[0].id);
+    }
 
-    updateTimeline(30, 'Файл прочитан и расставлены ударения');
+    titleEl.textContent = `✓ Загружена книга: ${file.name}`;
+    subEl.textContent = `${data.total_chars} символов, ${data.total_chapters} глав`;
+
+    updateTimeline(30, `Книга разбита на ${data.total_chapters} глав`);
     setMilestoneActive('msStress');
   } catch (e) {
     alert('Ошибка при загрузке: ' + e.message);
@@ -658,7 +940,7 @@ function renderChunksGrid(chunks, statuses = []) {
       <div class="empty-chunks-placeholder">
         <div class="placeholder-icon">✍️</div>
         <h4>Чанки еще не сформированы</h4>
-        <p>Загрузите PDF/TXT файл или вставьте текст в поле выше и нажмите кнопку <strong>«Разобрать текст и расставить ударения»</strong>.</p>
+        <p>Выберите главу выше или нажмите кнопку <strong>«Разобрать текст и расставить ударения»</strong>.</p>
       </div>
     `;
     return;
@@ -754,11 +1036,13 @@ function startProgressPolling() {
 
       if (data.status === 'completed') {
         clearInterval(progressInterval);
-        btnStartTTS.disabled = false;
-        btnStartTTS.textContent = '🚀 Начать озвучку книги';
+        if (btnStartTTS) {
+          btnStartTTS.disabled = false;
+          btnStartTTS.textContent = '🚀 Начать озвучку книги';
+        }
         updateTimeline(100, 'Склейка завершена!');
         setMilestoneActive('msReady');
-        if (statusMsg) statusMsg.textContent = 'Готово! Аудиокнига успешно создана.';
+        if (statusMsg) statusMsg.textContent = 'Готово! Аудиофайл успешно создан.';
 
         if (data.output_url) {
           finalBox.classList.remove('hidden');
@@ -768,10 +1052,11 @@ function startProgressPolling() {
         }
       } else if (data.status === 'error') {
         clearInterval(progressInterval);
-        btnStartTTS.disabled = false;
-        btnStartTTS.textContent = '🚀 Начать озвучку книги';
+        if (btnStartTTS) {
+          btnStartTTS.disabled = false;
+          btnStartTTS.textContent = '🚀 Начать озвучку книги';
+        }
         if (statusMsg) statusMsg.textContent = 'Ошибка генерации: ' + data.error;
-        alert('Ошибка генерации: ' + data.error);
       }
     } catch (e) {
       console.error('Ошибка прогресса:', e);
