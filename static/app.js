@@ -176,16 +176,44 @@ async function initVoices() {
   let referenceAudioInstance = null;
   const btnListenRef = document.getElementById('btnListenRef');
   const btnStopRef = document.getElementById('btnStopRef');
+  const voiceSelect = document.getElementById('voiceSelect');
+  const btnQuickAdd = document.getElementById('btnQuickAddVoice');
+
+  if (btnQuickAdd) {
+    btnQuickAdd.addEventListener('click', () => {
+      // Switch to voices tab
+      const voicesTabBtn = document.querySelector('.nav-pill[data-tab="voices"]');
+      if (voicesTabBtn) voicesTabBtn.click();
+    });
+  }
+
+  if (voiceSelect) {
+    voiceSelect.addEventListener('change', () => {
+      if (referenceAudioInstance) {
+        referenceAudioInstance.pause();
+        referenceAudioInstance.currentTime = 0;
+      }
+      const selectedName = voiceSelect.value;
+      const voice = voicesData.find(v => v.name === selectedName) || voicesData[0];
+      if (voice) {
+        const nameEl = document.getElementById('activeVoiceName');
+        const captionEl = document.getElementById('voiceSampleCaption');
+        if (nameEl) nameEl.textContent = voice.name === 'default' ? 'Мой голос (Default)' : voice.name;
+        if (captionEl) captionEl.textContent = `«${voice.text}»`;
+      }
+    });
+  }
 
   if (btnListenRef) {
     btnListenRef.addEventListener('click', () => {
-      const defaultVoice = voicesData.find(v => v.name === 'default') || voicesData[0];
-      if (defaultVoice) {
+      const selectedName = voiceSelect ? voiceSelect.value : 'default';
+      const voice = voicesData.find(v => v.name === selectedName) || voicesData[0];
+      if (voice) {
         if (referenceAudioInstance) {
           referenceAudioInstance.pause();
           referenceAudioInstance.currentTime = 0;
         }
-        const filename = defaultVoice.audio_path.split('/').pop();
+        const filename = voice.audio_path.split('/').pop();
         referenceAudioInstance = new Audio(`/api/audio/voice/${filename}`);
         referenceAudioInstance.play().catch(() => alert('Не удалось воспроизвести файл референса'));
       }
@@ -207,7 +235,24 @@ async function loadVoices() {
     const res = await fetch('/api/voices');
     voicesData = await res.json();
 
-    const activeVoice = voicesData.find(v => v.name === 'default') || voicesData[0];
+    // Populate voice dropdown on main page
+    const select = document.getElementById('voiceSelect');
+    if (select) {
+      const prevVal = select.value;
+      select.innerHTML = '';
+      voicesData.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = v.name === 'default' ? '⭐️ Мой голос (Default)' : `👤 ${v.name}`;
+        select.appendChild(opt);
+      });
+      if (prevVal && voicesData.some(v => v.name === prevVal)) {
+        select.value = prevVal;
+      }
+    }
+
+    const currentSelected = select ? select.value : 'default';
+    const activeVoice = voicesData.find(v => v.name === currentSelected) || voicesData[0];
     if (activeVoice) {
       const nameEl = document.getElementById('activeVoiceName');
       const captionEl = document.getElementById('voiceSampleCaption');
@@ -224,7 +269,7 @@ async function loadVoices() {
         const filename = v.audio_path.split('/').pop();
         card.innerHTML = `
           <div class="voice-card-header">
-            <span class="voice-card-name">${v.name === 'default' ? '⭐️ Основной голос (Default)' : v.name}</span>
+            <span class="voice-card-name">${v.name === 'default' ? '⭐️ Основной голос (Default)' : `👤 ${v.name}`}</span>
             ${v.name !== 'default' ? `<button class="btn-del" onclick="deleteVoice('${v.name}')">Удалить</button>` : ''}
           </div>
           <p class="voice-card-text">«${v.text}»</p>
@@ -485,7 +530,7 @@ function initStudio() {
       const payload = {
         chunks: chunksToSend.length > 0 ? chunksToSend : null,
         text: chunksToSend.length === 0 ? rawText : null,
-        voice_name: 'default',
+        voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
         output_name: document.getElementById('outputNameInput').value.trim() || null,
         output_format: selectedFormat,
         pause_duration: parseFloat(document.getElementById('paramPause').value),

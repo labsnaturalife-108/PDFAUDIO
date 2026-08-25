@@ -541,6 +541,26 @@ body {
   border-color: #a1a1aa;
 }
 
+.voice-select-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.custom-select {
+  cursor: pointer;
+  background-color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-add-voice-quick {
+  white-space: nowrap;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .voice-sample-box {
   background: #fafaf9;
   border-radius: var(--radius-md);
