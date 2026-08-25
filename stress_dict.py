@@ -40,9 +40,8 @@ class StressDictionary:
 
     def apply(self, text: str) -> str:
         """
-        Applies dictionary replacements preserving Russian word boundaries and capitalization.
-        Matches case-insensitively, and if the original word in text starts with capital letter,
-        the replacement's first letter is capitalized as well.
+        Applies dictionary replacements preserving Russian word boundaries,
+        accents (\u0300-\u036f), and capitalization.
         """
         if not text or not self.entries:
             return text
@@ -53,8 +52,8 @@ class StressDictionary:
 
         for word in sorted_words:
             replacement = self.entries[word]
-            # Negative lookbehind and lookahead for Russian/alphanumeric characters
-            pattern = rf"(?<![а-яА-ЯёЁ0-9]){re.escape(word)}(?![а-яА-ЯёЁ0-9])"
+            # Boundary pattern includes Cyrillic letters, digits and combining accents
+            pattern = rf"(?<![а-яА-ЯёЁ0-9\u0300-\u036f]){re.escape(word)}(?![а-яА-ЯёЁ0-9\u0300-\u036f])"
             
             def replace_match(m: re.Match) -> str:
                 matched_text = m.group(0)
