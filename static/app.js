@@ -524,10 +524,21 @@ function startProgressPolling() {
   const finalBox = document.getElementById('finalPlayerBox');
   const mainPlayer = document.getElementById('mainAudioPlayer');
   const btnDownload = document.getElementById('btnDownloadFinal');
+  const btnOpenFolder = document.getElementById('btnOpenFolder');
   const finalFilename = document.getElementById('finalFilenameText');
   const scaleBadge = document.getElementById('overviewChunkCount');
   const btnStartTTS = document.getElementById('btnStartTTS');
   const statusMsg = document.getElementById('pipelineStatusMessage');
+
+  if (btnOpenFolder) {
+    btnOpenFolder.onclick = async () => {
+      try {
+        await fetch('/api/open-output-folder', { method: 'POST' });
+      } catch (e) {
+        console.error('Ошибка открытия папки:', e);
+      }
+    };
+  }
 
   if (finalBox) finalBox.classList.add('hidden');
   setMilestoneActive('msTTS');

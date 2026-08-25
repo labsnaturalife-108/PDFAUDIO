@@ -249,6 +249,21 @@ def serve_chunk_audio(session_id: str, filename: str):
         raise HTTPException(status_code=404, detail="Аудио чанк не найден")
     return FileResponse(file_path, media_type="audio/wav")
 
+@app.post("/api/open-output-folder")
+def open_output_folder():
+    try:
+        import subprocess, sys
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        if sys.platform == "darwin":
+            subprocess.run(["open", str(OUTPUT_DIR)])
+        elif sys.platform == "win32":
+            os.startfile(str(OUTPUT_DIR))
+        else:
+            subprocess.run(["xdg-open", str(OUTPUT_DIR)])
+        return {"status": "opened", "path": str(OUTPUT_DIR)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/audio/output/{filename}")
 def serve_output_audio(filename: str):
     file_path = OUTPUT_DIR / filename

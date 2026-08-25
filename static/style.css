@@ -828,6 +828,12 @@ body {
   height: 34px;
 }
 
+.final-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .btn-white-pill {
   background: #ffffff;
   color: var(--bg-emerald);
@@ -842,6 +848,33 @@ body {
   gap: 6px;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-white-pill:hover {
+  background: #f4f4f5;
+  transform: translateY(-1px);
+}
+
+.btn-folder-icon {
+  background: #ffffff;
+  color: var(--bg-emerald);
+  border: none;
+  border-radius: var(--radius-pill);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-folder-icon:hover {
+  background: #f4f4f5;
+  transform: scale(1.06);
 }
 
 .pipeline-footer-stats {

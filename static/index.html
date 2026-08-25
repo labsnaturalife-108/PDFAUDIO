@@ -233,9 +233,14 @@
                 <span id="finalFilenameText" class="final-filename">audiobook.mp3</span>
               </div>
               <audio id="mainAudioPlayer" controls class="custom-audio-player"></audio>
-              <a id="btnDownloadFinal" href="#" download class="btn-white-pill">
-                ⬇️ Скачать готовую аудиокнигу
-              </a>
+              <div class="final-actions-row">
+                <a id="btnDownloadFinal" href="#" download class="btn-white-pill flex-1">
+                  ⬇️ Скачать готовую аудиокнигу
+                </a>
+                <button id="btnOpenFolder" type="button" class="btn-folder-icon" title="Открыть папку с файлами на компьютере (Finder)">
+                  📁
+                </button>
+              </div>
             </div>
 
             <div class="pipeline-footer-stats">
