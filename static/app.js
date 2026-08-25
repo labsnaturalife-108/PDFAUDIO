@@ -408,6 +408,8 @@ let chapterTimers = {};
 
 function cancelAllOperations() {
   isBatchRunning = false;
+  // Send global cancellation to backend
+  fetch('/api/cancel-all', { method: 'POST' }).catch(() => {});
   if (currentSessionId) {
     fetch(`/api/cancel/${currentSessionId}`, { method: 'POST' }).catch(() => {});
   }

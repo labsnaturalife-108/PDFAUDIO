@@ -141,8 +141,25 @@ class TextToSpeechPipeline:
                     progress_callback(progress)
                 raise
 
+            # Re-check cancellation immediately after chunk finishes
+            if self.is_cancelled(progress.session_id):
+                progress.status = "cancelled"
+                progress.message = "Генерация отменена пользователем."
+                if progress_callback:
+                    progress_callback(progress)
+                print(f"🛑 [Pipeline] Сессия {progress.session_id} немедленно остановлена после чанка {i+1}.")
+                return progress
+
             if progress_callback:
                 progress_callback(progress)
+
+        # Check before merge
+        if self.is_cancelled(progress.session_id):
+            progress.status = "cancelled"
+            progress.message = "Генерация отменена пользователем."
+            if progress_callback:
+                progress_callback(progress)
+            return progress
 
         # Merge step
         progress.status = "merging"

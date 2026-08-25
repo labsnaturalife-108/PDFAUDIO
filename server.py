@@ -239,9 +239,10 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
             session_id=session_id
         )
     except Exception as e:
-        prog.status = "error"
-        prog.error = str(e)
-        prog.message = f"Ошибка генерации: {e}"
+        if prog.status != "cancelled":
+            prog.status = "error"
+            prog.error = str(e)
+            prog.message = f"Ошибка генерации: {e}"
 
 @app.post("/api/generate")
 def start_generation(req: GenerateRequest, background_tasks: BackgroundTasks):
@@ -264,7 +265,18 @@ def cancel_generation(session_id: str):
         prog.status = "cancelled"
         prog.message = "Озвучка отменена пользователем."
     pipeline.cancel(session_id)
+    print(f"🛑 [Server] Отмена задачи {session_id}")
     return {"status": "cancelled", "session_id": session_id}
+
+@app.post("/api/cancel-all")
+def cancel_all_generations():
+    for sid, prog in sessions.items():
+        if prog.status in ["queued", "processing", "merging"]:
+            prog.status = "cancelled"
+            prog.message = "Озвучка отменена пользователем."
+            pipeline.cancel(sid)
+    print("🛑 [Server] Все активные задачи генерации принудительно остановлены.")
+    return {"status": "all_cancelled"}
 
 @app.get("/api/progress/{session_id}")
 def get_progress(session_id: str):
