@@ -46,8 +46,16 @@ class DocumentExtractor:
                         
                         chap_text = DocumentExtractor.clean_text("\n\n".join(chap_pages))
                         if chap_text:
+                            clean_t = title.strip()
+                            if not re.match(r"^\d+[\.\s\-:]", clean_t):
+                                formatted_t = f"{idx + 1}. {clean_t}"
+                            else:
+                                formatted_t = clean_t
+
                             outline_chapters.append({
-                                "title": title,
+                                "id": f"chapter_{idx + 1}",
+                                "index": idx + 1,
+                                "title": formatted_t,
                                 "text": chap_text,
                                 "char_count": len(chap_text)
                             })

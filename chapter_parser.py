@@ -139,10 +139,17 @@ class ChapterParser:
         # Format output structures with IDs and character counts
         formatted_chapters = []
         for idx, chap in enumerate(raw_chapters):
+            raw_title = (chap.get("title") or f"Глава {idx + 1}").strip()
+            # If title does not start with a number (e.g. "1.", "01.", "1 -"), prepend sequential number
+            if not re.match(r"^\d+[\.\s\-:]", raw_title):
+                formatted_title = f"{idx + 1}. {raw_title}"
+            else:
+                formatted_title = raw_title
+
             formatted_chapters.append({
                 "id": f"chapter_{idx + 1}",
                 "index": idx + 1,
-                "title": chap["title"] or f"Глава {idx + 1}",
+                "title": formatted_title,
                 "text": chap["text"],
                 "char_count": len(chap["text"]),
                 "status": "idle",

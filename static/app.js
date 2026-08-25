@@ -585,7 +585,7 @@ function initStudio() {
           parts.push({
             id: `chapter_${pIdx}`,
             index: pIdx,
-            title: `Часть ${pIdx}`,
+            title: `${pIdx}. Часть ${pIdx}`,
             text: body,
             char_count: body.length,
             chunks: [],
@@ -603,7 +603,7 @@ function initStudio() {
         parts.push({
           id: `chapter_${pIdx}`,
           index: pIdx,
-          title: `Часть ${pIdx}`,
+          title: `${pIdx}. Часть ${pIdx}`,
           text: body,
           char_count: body.length,
           chunks: [],
