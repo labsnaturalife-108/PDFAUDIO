@@ -21,6 +21,16 @@ function initOutputModal() {
   const btnClose = document.getElementById('btnCloseModal');
   const btnTriggerFinder = document.getElementById('btnTriggerFinderOpen');
   const btnOpenFolder = document.getElementById('btnOpenFolder');
+  const btnRefresh = document.getElementById('btnRefreshOutputs');
+
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', () => {
+      btnRefresh.textContent = '⏳ Загрузка...';
+      loadOutputFiles().finally(() => {
+        btnRefresh.textContent = '🔄 Обновить';
+      });
+    });
+  }
 
   async function openModal() {
     if (modal) modal.classList.remove('hidden');

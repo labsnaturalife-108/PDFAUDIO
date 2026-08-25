@@ -15,4 +15,4 @@ python3 cli.py check
 
 echo ""
 echo "🚀 Запуск веб-студии на http://127.0.0.1:$PORT ..."
-python3 cli.py server --port $PORT
+python3 cli.py server --port $PORT --reload
