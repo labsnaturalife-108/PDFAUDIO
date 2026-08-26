@@ -151,10 +151,72 @@ async function initServerStatus() {
   setInterval(check, 8000);
 }
 
+function applyVoiceSettings(voice) {
+  if (!voice) return;
+  const speedSlider = document.getElementById('paramSpeed');
+  const valSpeed = document.getElementById('valSpeed');
+  const pauseSlider = document.getElementById('paramPause');
+  const valPause = document.getElementById('valPause');
+  const tempSlider = document.getElementById('paramTemp');
+  const valTemp = document.getElementById('valTemp');
+  const instructInput = document.getElementById('customInstructInput');
+
+  const speedVal = (voice.speed !== undefined && voice.speed !== null) ? parseFloat(voice.speed) : 1.0;
+  const pauseVal = (voice.pause_duration !== undefined && voice.pause_duration !== null) ? parseFloat(voice.pause_duration) : 0.6;
+  const tempVal = (voice.temperature !== undefined && voice.temperature !== null) ? parseFloat(voice.temperature) : 0.88;
+  const instructVal = (voice.instruct !== undefined && voice.instruct !== null) ? voice.instruct : '';
+
+  if (speedSlider) speedSlider.value = speedVal;
+  if (valSpeed) valSpeed.textContent = speedVal;
+
+  if (pauseSlider) pauseSlider.value = pauseVal;
+  if (valPause) valPause.textContent = pauseVal;
+
+  if (tempSlider) tempSlider.value = tempVal;
+  if (valTemp) valTemp.textContent = tempVal;
+
+  if (instructInput) instructInput.value = instructVal;
+
+  // Sync emotion chips if matching
+  const chips = document.querySelectorAll('.emotion-chip');
+  chips.forEach(chip => {
+    const cTemp = parseFloat(chip.getAttribute('data-temp'));
+    const cSpeed = parseFloat(chip.getAttribute('data-speed'));
+    if (Math.abs(cTemp - tempVal) < 0.03 && Math.abs(cSpeed - speedVal) < 0.03) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+}
+
+function renderVoicesVaultList() {
+  const container = document.getElementById('voicesListContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  voicesData.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'voice-card-modern';
+    const filename = v.audio_path.split('/').pop();
+    card.innerHTML = `
+      <div class="voice-card-header">
+        <span class="voice-card-name">${v.name === 'default' ? '⭐️ Основной голос (Default)' : `👤 ${v.name}`}</span>
+        ${v.name !== 'default' ? `<button class="btn-del" onclick="deleteVoice('${v.name}')">Удалить</button>` : ''}
+      </div>
+      <div class="voice-settings-strip" style="display:flex; flex-wrap:wrap; gap:8px; margin: 8px 0 10px; font-size:12px; color: var(--text-secondary);">
+        <span class="stat-badge">⚡ Скорость: <strong>${v.speed ?? 1.0}x</strong></span>
+        <span class="stat-badge">⏸ Пауза: <strong>${v.pause_duration ?? 0.6}с</strong></span>
+        <span class="stat-badge">🎭 Темп: <strong>${v.temperature ?? 0.88}</strong></span>
+      </div>
+      <p class="voice-card-text">«${v.text}»</p>
+      <audio controls class="custom-audio-player" src="/api/audio/voice/${filename}"></audio>
+    `;
+    container.appendChild(card);
+  });
+}
+
 // --- Voices ---
 async function initVoices() {
-  loadVoices();
-
   const newVoiceForm = document.getElementById('newVoiceForm');
   if (newVoiceForm) {
     newVoiceForm.addEventListener('submit', async (e) => {
@@ -178,7 +240,7 @@ async function initVoices() {
         if (!res.ok) throw new Error('Ошибка добавления голоса');
         alert('Голосовой профиль сохранен!');
         newVoiceForm.reset();
-        loadVoices();
+        await loadVoices();
       } catch (err) {
         alert(err.message);
       }
@@ -198,33 +260,6 @@ async function initVoices() {
     });
   }
 
-function applyVoiceSettings(voice) {
-  if (!voice) return;
-  const speedSlider = document.getElementById('paramSpeed');
-  const valSpeed = document.getElementById('valSpeed');
-  const pauseSlider = document.getElementById('paramPause');
-  const valPause = document.getElementById('valPause');
-  const tempSlider = document.getElementById('paramTemp');
-  const valTemp = document.getElementById('valTemp');
-  const instructInput = document.getElementById('customInstructInput');
-
-  if (voice.speed !== undefined && speedSlider && valSpeed) {
-    speedSlider.value = voice.speed;
-    valSpeed.textContent = voice.speed;
-  }
-  if (voice.pause_duration !== undefined && pauseSlider && valPause) {
-    pauseSlider.value = voice.pause_duration;
-    valPause.textContent = voice.pause_duration;
-  }
-  if (voice.temperature !== undefined && tempSlider && valTemp) {
-    tempSlider.value = voice.temperature;
-    valTemp.textContent = voice.temperature;
-  }
-  if (voice.instruct !== undefined && voice.instruct !== null && instructInput) {
-    instructInput.value = voice.instruct;
-  }
-}
-
   if (voiceSelect) {
     voiceSelect.addEventListener('change', () => {
       if (referenceAudioInstance) {
@@ -232,6 +267,7 @@ function applyVoiceSettings(voice) {
         referenceAudioInstance.currentTime = 0;
       }
       const selectedName = voiceSelect.value;
+      localStorage.setItem('pdfaudio_selected_voice', selectedName);
       const voice = voicesData.find(v => v.name === selectedName) || voicesData[0];
       if (voice) {
         const nameEl = document.getElementById('activeVoiceName');
@@ -255,7 +291,7 @@ function applyVoiceSettings(voice) {
 
       try {
         btnSaveVoiceSettings.disabled = true;
-        btnSaveVoiceSettings.textContent = 'Сохранение...';
+        btnSaveVoiceSettings.textContent = '⏳ Сохранение...';
 
         const res = await fetch(`/api/voices/${encodeURIComponent(selectedName)}/settings`, {
           method: 'POST',
@@ -265,17 +301,19 @@ function applyVoiceSettings(voice) {
         if (!res.ok) throw new Error('Ошибка сохранения настроек голоса');
         const data = await res.json();
         
-        // Update cached voices
+        // Update cached voices in memory
         const idx = voicesData.findIndex(v => v.name === selectedName);
         if (idx !== -1 && data.voice) {
           voicesData[idx] = data.voice;
         }
 
-        btnSaveVoiceSettings.textContent = '✓ Настройки сохранены!';
+        renderVoicesVaultList();
+
+        btnSaveVoiceSettings.textContent = `✓ Настройки для "${selectedName}" сохранены!`;
         setTimeout(() => {
           btnSaveVoiceSettings.disabled = false;
           btnSaveVoiceSettings.textContent = '💾 Сохранить для этого голоса';
-        }, 2000);
+        }, 2500);
       } catch (e) {
         alert(e.message);
         btnSaveVoiceSettings.disabled = false;
@@ -308,6 +346,8 @@ function applyVoiceSettings(voice) {
       }
     });
   }
+
+  await loadVoices();
 }
 
 async function loadVoices() {
@@ -316,8 +356,9 @@ async function loadVoices() {
     voicesData = await res.json();
 
     const select = document.getElementById('voiceSelect');
+    const savedVoice = localStorage.getItem('pdfaudio_selected_voice') || 'default';
+
     if (select) {
-      const prevVal = select.value;
       select.innerHTML = '';
       voicesData.forEach(v => {
         const opt = document.createElement('option');
@@ -325,8 +366,8 @@ async function loadVoices() {
         opt.textContent = v.name === 'default' ? '⭐️ Мой голос (Default)' : `👤 ${v.name}`;
         select.appendChild(opt);
       });
-      if (prevVal && voicesData.some(v => v.name === prevVal)) {
-        select.value = prevVal;
+      if (voicesData.some(v => v.name === savedVoice)) {
+        select.value = savedVoice;
       }
     }
 
@@ -340,29 +381,7 @@ async function loadVoices() {
       applyVoiceSettings(activeVoice);
     }
 
-    const container = document.getElementById('voicesListContainer');
-    if (container) {
-      container.innerHTML = '';
-      voicesData.forEach(v => {
-        const card = document.createElement('div');
-        card.className = 'voice-card-modern';
-        const filename = v.audio_path.split('/').pop();
-        card.innerHTML = `
-          <div class="voice-card-header">
-            <span class="voice-card-name">${v.name === 'default' ? '⭐️ Основной голос (Default)' : `👤 ${v.name}`}</span>
-            ${v.name !== 'default' ? `<button class="btn-del" onclick="deleteVoice('${v.name}')">Удалить</button>` : ''}
-          </div>
-          <div class="voice-settings-strip" style="display:flex; gap:8px; margin: 6px 0 10px; font-size:12px; color: var(--text-secondary);">
-            <span class="stat-badge">⚡ Скорость: <strong>${v.speed ?? 1.0}x</strong></span>
-            <span class="stat-badge">⏸ Пауза: <strong>${v.pause_duration ?? 0.6}с</strong></span>
-            <span class="stat-badge">🎭 Темп: <strong>${v.temperature ?? 0.88}</strong></span>
-          </div>
-          <p class="voice-card-text">«${v.text}»</p>
-          <audio controls class="custom-audio-player" src="/api/audio/voice/${filename}"></audio>
-        `;
-        container.appendChild(card);
-      });
-    }
+    renderVoicesVaultList();
   } catch (e) {
     console.error('Ошибка загрузки голосов:', e);
   }
