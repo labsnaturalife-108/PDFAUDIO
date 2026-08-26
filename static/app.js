@@ -279,47 +279,60 @@ async function initVoices() {
     });
   }
 
-  // Save Voice Settings Button
+window.saveCurrentVoiceSettings = async function(event) {
+  if (event) {
+    try { event.preventDefault(); event.stopPropagation(); } catch (e) {}
+  }
+  const voiceSelect = document.getElementById('voiceSelect');
+  const selectedName = voiceSelect ? voiceSelect.value : 'default';
+  const speed = parseFloat(document.getElementById('paramSpeed').value);
+  const pause_duration = parseFloat(document.getElementById('paramPause').value);
+  const temperature = parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88);
+  const instruct = document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null;
+
+  const btnSave = document.getElementById('btnSaveVoiceSettings');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = '⏳ Сохранение...';
+  }
+
+  try {
+    const res = await fetch(`/api/voices/${encodeURIComponent(selectedName)}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ speed, pause_duration, temperature, instruct })
+    });
+    if (!res.ok) throw new Error('Ошибка сохранения настроек голоса');
+    const data = await res.json();
+    
+    // Update cached voices in memory
+    const idx = voicesData.findIndex(v => v.name === selectedName);
+    if (idx !== -1 && data.voice) {
+      voicesData[idx] = data.voice;
+    }
+
+    renderVoicesVaultList();
+
+    if (btnSave) {
+      btnSave.textContent = `✓ Настройки для "${selectedName}" сохранены!`;
+      setTimeout(() => {
+        btnSave.disabled = false;
+        btnSave.textContent = '💾 Сохранить для этого голоса';
+      }, 2500);
+    }
+  } catch (e) {
+    alert('Ошибка сохранения: ' + e.message);
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = '💾 Сохранить для этого голоса';
+    }
+  }
+};
+
+  // Also bind event listener if present
   const btnSaveVoiceSettings = document.getElementById('btnSaveVoiceSettings');
   if (btnSaveVoiceSettings) {
-    btnSaveVoiceSettings.addEventListener('click', async () => {
-      const selectedName = voiceSelect ? voiceSelect.value : 'default';
-      const speed = parseFloat(document.getElementById('paramSpeed').value);
-      const pause_duration = parseFloat(document.getElementById('paramPause').value);
-      const temperature = parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88);
-      const instruct = document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null;
-
-      try {
-        btnSaveVoiceSettings.disabled = true;
-        btnSaveVoiceSettings.textContent = '⏳ Сохранение...';
-
-        const res = await fetch(`/api/voices/${encodeURIComponent(selectedName)}/settings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ speed, pause_duration, temperature, instruct })
-        });
-        if (!res.ok) throw new Error('Ошибка сохранения настроек голоса');
-        const data = await res.json();
-        
-        // Update cached voices in memory
-        const idx = voicesData.findIndex(v => v.name === selectedName);
-        if (idx !== -1 && data.voice) {
-          voicesData[idx] = data.voice;
-        }
-
-        renderVoicesVaultList();
-
-        btnSaveVoiceSettings.textContent = `✓ Настройки для "${selectedName}" сохранены!`;
-        setTimeout(() => {
-          btnSaveVoiceSettings.disabled = false;
-          btnSaveVoiceSettings.textContent = '💾 Сохранить для этого голоса';
-        }, 2500);
-      } catch (e) {
-        alert(e.message);
-        btnSaveVoiceSettings.disabled = false;
-        btnSaveVoiceSettings.textContent = '💾 Сохранить для этого голоса';
-      }
-    });
+    btnSaveVoiceSettings.onclick = window.saveCurrentVoiceSettings;
   }
 
   if (btnListenRef) {
