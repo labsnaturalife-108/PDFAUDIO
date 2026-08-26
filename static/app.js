@@ -198,6 +198,33 @@ async function initVoices() {
     });
   }
 
+function applyVoiceSettings(voice) {
+  if (!voice) return;
+  const speedSlider = document.getElementById('paramSpeed');
+  const valSpeed = document.getElementById('valSpeed');
+  const pauseSlider = document.getElementById('paramPause');
+  const valPause = document.getElementById('valPause');
+  const tempSlider = document.getElementById('paramTemp');
+  const valTemp = document.getElementById('valTemp');
+  const instructInput = document.getElementById('customInstructInput');
+
+  if (voice.speed !== undefined && speedSlider && valSpeed) {
+    speedSlider.value = voice.speed;
+    valSpeed.textContent = voice.speed;
+  }
+  if (voice.pause_duration !== undefined && pauseSlider && valPause) {
+    pauseSlider.value = voice.pause_duration;
+    valPause.textContent = voice.pause_duration;
+  }
+  if (voice.temperature !== undefined && tempSlider && valTemp) {
+    tempSlider.value = voice.temperature;
+    valTemp.textContent = voice.temperature;
+  }
+  if (voice.instruct !== undefined && voice.instruct !== null && instructInput) {
+    instructInput.value = voice.instruct;
+  }
+}
+
   if (voiceSelect) {
     voiceSelect.addEventListener('change', () => {
       if (referenceAudioInstance) {
@@ -211,6 +238,48 @@ async function initVoices() {
         const captionEl = document.getElementById('voiceSampleCaption');
         if (nameEl) nameEl.textContent = voice.name === 'default' ? 'Мой голос (Default)' : voice.name;
         if (captionEl) captionEl.textContent = `«${voice.text}»`;
+        applyVoiceSettings(voice);
+      }
+    });
+  }
+
+  // Save Voice Settings Button
+  const btnSaveVoiceSettings = document.getElementById('btnSaveVoiceSettings');
+  if (btnSaveVoiceSettings) {
+    btnSaveVoiceSettings.addEventListener('click', async () => {
+      const selectedName = voiceSelect ? voiceSelect.value : 'default';
+      const speed = parseFloat(document.getElementById('paramSpeed').value);
+      const pause_duration = parseFloat(document.getElementById('paramPause').value);
+      const temperature = parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88);
+      const instruct = document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null;
+
+      try {
+        btnSaveVoiceSettings.disabled = true;
+        btnSaveVoiceSettings.textContent = 'Сохранение...';
+
+        const res = await fetch(`/api/voices/${encodeURIComponent(selectedName)}/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ speed, pause_duration, temperature, instruct })
+        });
+        if (!res.ok) throw new Error('Ошибка сохранения настроек голоса');
+        const data = await res.json();
+        
+        // Update cached voices
+        const idx = voicesData.findIndex(v => v.name === selectedName);
+        if (idx !== -1 && data.voice) {
+          voicesData[idx] = data.voice;
+        }
+
+        btnSaveVoiceSettings.textContent = '✓ Настройки сохранены!';
+        setTimeout(() => {
+          btnSaveVoiceSettings.disabled = false;
+          btnSaveVoiceSettings.textContent = '💾 Сохранить для этого голоса';
+        }, 2000);
+      } catch (e) {
+        alert(e.message);
+        btnSaveVoiceSettings.disabled = false;
+        btnSaveVoiceSettings.textContent = '💾 Сохранить для этого голоса';
       }
     });
   }
@@ -268,6 +337,7 @@ async function loadVoices() {
       const captionEl = document.getElementById('voiceSampleCaption');
       if (nameEl) nameEl.textContent = activeVoice.name === 'default' ? 'Мой голос (Default)' : activeVoice.name;
       if (captionEl) captionEl.textContent = `«${activeVoice.text}»`;
+      applyVoiceSettings(activeVoice);
     }
 
     const container = document.getElementById('voicesListContainer');
@@ -281,6 +351,11 @@ async function loadVoices() {
           <div class="voice-card-header">
             <span class="voice-card-name">${v.name === 'default' ? '⭐️ Основной голос (Default)' : `👤 ${v.name}`}</span>
             ${v.name !== 'default' ? `<button class="btn-del" onclick="deleteVoice('${v.name}')">Удалить</button>` : ''}
+          </div>
+          <div class="voice-settings-strip" style="display:flex; gap:8px; margin: 6px 0 10px; font-size:12px; color: var(--text-secondary);">
+            <span class="stat-badge">⚡ Скорость: <strong>${v.speed ?? 1.0}x</strong></span>
+            <span class="stat-badge">⏸ Пауза: <strong>${v.pause_duration ?? 0.6}с</strong></span>
+            <span class="stat-badge">🎭 Темп: <strong>${v.temperature ?? 0.88}</strong></span>
           </div>
           <p class="voice-card-text">«${v.text}»</p>
           <audio controls class="custom-audio-player" src="/api/audio/voice/${filename}"></audio>

@@ -81,6 +81,12 @@ class RecordChapterRequest(BaseModel):
     chapter_title: str
     audio_url: str
 
+class VoiceSettingsRequest(BaseModel):
+    speed: float = 1.0
+    pause_duration: float = DEFAULT_PAUSE_DURATION
+    temperature: float = 0.88
+    instruct: Optional[str] = None
+
 
 # --- API Routes ---
 
@@ -98,6 +104,20 @@ def get_status():
 def get_voices():
     voices = voice_mgr.list_voices()
     return [v.to_dict() for v in voices]
+
+@app.post("/api/voices/{name}/settings")
+def update_voice_settings(name: str, req: VoiceSettingsRequest):
+    try:
+        updated = voice_mgr.update_voice_settings(
+            name=name,
+            speed=req.speed,
+            pause_duration=req.pause_duration,
+            temperature=req.temperature,
+            instruct=req.instruct
+        )
+        return {"status": "saved", "voice": updated.to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/voices")
 async def create_voice(name: str = Form(...), text: str = Form(...), audio: UploadFile = File(...)):

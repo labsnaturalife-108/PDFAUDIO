@@ -207,8 +207,16 @@
           <!-- 2. AUDIO SETTINGS & START BUTTON -->
           <div class="bento-card settings-card">
             <div class="card-header-simple">
-              <h3 class="card-title">Параметры аудио</h3>
-              <span class="format-badge" id="badgeFormat">MP3 (256k)</span>
+              <div>
+                <h3 class="card-title">Параметры аудио</h3>
+                <p class="card-subtitle">Индивидуальные настройки для выбранного голоса</p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-outline-pill btn-sm" id="btnSaveVoiceSettings" title="Сохранить текущие параметры (скорость, паузы, интонацию) как настройки по умолчанию для выбранного голоса">
+                  💾 Сохранить для этого голоса
+                </button>
+                <span class="format-badge" id="badgeFormat">MP3 (256k)</span>
+              </div>
             </div>
 
             <div class="form-group">
