@@ -8,7 +8,7 @@
       "title": "1. Ползком через детство",
       "char_count": 3694,
       "status": "done",
-      "audio_url": "/api/audio/output/01_Polzkom.mp3",
+      "audio_url": "/api/audio/output/1._Ползком_через_детство.mp3",
       "completed_at": "2026-08-26T11:52:08.753650"
     },
     {
@@ -16,10 +16,262 @@
       "index": 2,
       "title": "2. Первый компьютер: сквозь грядки и огонь",
       "char_count": 2728,
+      "status": "done",
+      "audio_url": "/api/audio/output/2._Первый_компьютер__сквозь_грядки_и_огонь.mp3",
+      "completed_at": "2026-08-26T12:09:09.594068"
+    },
+    {
+      "id": "chapter_3",
+      "index": 3,
+      "title": "3. Физмат. Одно рукопожатие от Брежнева",
+      "char_count": 3006,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_4",
+      "index": 4,
+      "title": "4. Первый Интернет. Снятие санкций",
+      "char_count": 1152,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_5",
+      "index": 5,
+      "title": "5. Проводники на волю",
+      "char_count": 5652,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_6",
+      "index": 6,
+      "title": "6. Три удара Попика",
+      "char_count": 4536,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_7",
+      "index": 7,
+      "title": "7. Уход. Новый виток",
+      "char_count": 1938,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_8",
+      "index": 8,
+      "title": "8. Приговор",
+      "char_count": 3808,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_9",
+      "index": 9,
+      "title": "9. Бартер со Вселенной",
+      "char_count": 7756,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_10",
+      "index": 10,
+      "title": "10. Отпечаток страха",
+      "char_count": 2650,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_11",
+      "index": 11,
+      "title": "11. Вещества",
+      "char_count": 2951,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_12",
+      "index": 12,
+      "title": "12. Первая заграница",
+      "char_count": 7083,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_13",
+      "index": 13,
+      "title": "13. Микки Маус. Баночка с камнями",
+      "char_count": 10490,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_14",
+      "index": 14,
+      "title": "14. Мой первый бизнес-партнёр. Флайтурист. Краби ⇄ Купертино",
+      "char_count": 6232,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_15",
+      "index": 15,
+      "title": "15. Как я ищу сопровождающих",
+      "char_count": 3965,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_16",
+      "index": 16,
+      "title": "16. По следам Сноудена",
+      "char_count": 5125,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_17",
+      "index": 17,
+      "title": "17. Антидепрессант для брата",
+      "char_count": 6978,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_18",
+      "index": 18,
+      "title": "18. Истерика в молле. На лепестках роз",
+      "char_count": 3820,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_19",
+      "index": 19,
+      "title": "19. Кхонкен. Безвыборность",
+      "char_count": 6904,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_20",
+      "index": 20,
+      "title": "20. Сын",
+      "char_count": 4001,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_21",
+      "index": 21,
+      "title": "21. Сатурация 92. Накхарин",
+      "char_count": 8001,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_22",
+      "index": 22,
+      "title": "22. Лицом к асфальту",
+      "char_count": 2800,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_23",
+      "index": 23,
+      "title": "23. Однажды в Нонгкхае",
+      "char_count": 13754,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_24",
+      "index": 24,
+      "title": "24. Как я «взломал» туалет в аэропорту",
+      "char_count": 4093,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_25",
+      "index": 25,
+      "title": "25. Под дых от Apple — и снова в игре",
+      "char_count": 2252,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_26",
+      "index": 26,
+      "title": "26. Ботинок в чемодане",
+      "char_count": 7150,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_27",
+      "index": 27,
+      "title": "27. Тишина как сигнал",
+      "char_count": 1487,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_28",
+      "index": 28,
+      "title": "28. Эпилог: Другая сторона",
+      "char_count": 814,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_29",
+      "index": 29,
+      "title": "29. Послесловие",
+      "char_count": 1968,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_30",
+      "index": 30,
+      "title": "30. Содержание",
+      "char_count": 2765,
       "status": "idle",
       "audio_url": null,
       "completed_at": null
     }
   ],
-  "updated_at": "2026-08-26T11:52:08.753886"
+  "updated_at": "2026-08-26T12:13:00.696690"
 }

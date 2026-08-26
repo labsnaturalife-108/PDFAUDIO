@@ -1,6 +1,7 @@
 import json
 import re
 import hashlib
+import unicodedata
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
@@ -11,18 +12,25 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 
 class BookProjectManager:
     @staticmethod
-    def get_book_id(filename_or_title: str) -> str:
+    def normalize_str(s: str) -> str:
+        if not s:
+            return ""
+        return unicodedata.normalize("NFC", s)
+
+    @classmethod
+    def get_book_id(cls, filename_or_title: str) -> str:
         """
-        Generates a clean filesystem-safe slug/id for a book.
+        Generates a clean filesystem-safe slug/id for a book with NFC normalization.
         """
-        clean = re.sub(r"[^\w\sа-яА-ЯёЁ-]", "", filename_or_title).strip()
+        norm = cls.normalize_str(filename_or_title)
+        clean = re.sub(r"[^\w\sа-яА-ЯёЁa-zA-Z0-9-]", "", norm).strip()
         clean = re.sub(r"[\s-]+", "_", clean).lower()
         if not clean:
-            clean = hashlib.md5(filename_or_title.encode("utf-8")).hexdigest()[:10]
+            clean = hashlib.md5(norm.encode("utf-8")).hexdigest()[:10]
         return clean
 
-    @staticmethod
-    def get_project_file(book_id: str) -> Path:
+    @classmethod
+    def get_project_file(cls, book_id: str) -> Path:
         return PROJECTS_DIR / f"{book_id}.json"
 
     @classmethod
@@ -54,7 +62,7 @@ class BookProjectManager:
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Merges new extracted chapters with previously saved progress log
-        and verifies if output audio files physically exist on disk.
+        and scans the output/ directory for existing synthesized chapter audio files.
         """
         book_id = cls.get_book_id(book_title)
         saved_data = cls.load_project(book_id) or {}
@@ -62,7 +70,7 @@ class BookProjectManager:
         
         if "chapters" in saved_data:
             for sc in saved_data["chapters"]:
-                title_key = sc.get("title", "")
+                title_key = cls.normalize_str(sc.get("title", ""))
                 if title_key:
                     saved_chapters_map[title_key] = sc
                 norm_title = cls._normalize_title(title_key)
@@ -71,54 +79,46 @@ class BookProjectManager:
                 if sc.get("id"):
                     saved_chapters_map[sc["id"]] = sc
 
-        existing_output_files = list(OUTPUT_DIR.glob("*.*"))
+        # Read actual audio files present in output/
+        existing_output_files = [f for f in OUTPUT_DIR.glob("*.*") if f.suffix.lower() in [".mp3", ".wav", ".m4a", ".flac"]]
 
         for chap in chapters:
-            title = chap.get("title", "")
+            raw_title = chap.get("title", "")
             chap_id = chap.get("id", "")
-            norm_title = cls._normalize_title(title)
+            norm_title = cls._normalize_title(raw_title)
             
-            # Default values
             chap.setdefault("status", "idle")
             chap.setdefault("audio_url", None)
             chap.setdefault("completed_at", None)
 
-            # Check if previously recorded as done in project log
-            matched_record = saved_chapters_map.get(chap_id) or saved_chapters_map.get(title) or saved_chapters_map.get(norm_title)
+            # 1. Match from project json log
+            matched_record = (
+                saved_chapters_map.get(chap_id) or 
+                saved_chapters_map.get(raw_title) or 
+                saved_chapters_map.get(norm_title)
+            )
             
             if matched_record and matched_record.get("status") == "done":
                 chap["status"] = "done"
                 chap["audio_url"] = matched_record.get("audio_url")
                 chap["completed_at"] = matched_record.get("completed_at")
-                
-                # Check if file still exists on disk
-                if chap["audio_url"]:
-                    filename = chap["audio_url"].split("/")[-1]
-                    target_path = OUTPUT_DIR / filename
-                    if not target_path.exists() or target_path.stat().st_size < 1000:
-                        # Search for alternative file matching title
-                        found_alt = False
-                        for out_file in existing_output_files:
-                            if norm_title and norm_title in cls._normalize_title(out_file.stem) and out_file.stat().st_size > 1000:
-                                chap["audio_url"] = f"/api/audio/output/{out_file.name}"
-                                found_alt = True
-                                break
-                continue
 
-            # Check if output audio file exists matching chapter title in output/ folder
+            # 2. Check if physical audio file exists in output/ folder
             if norm_title:
                 for out_file in existing_output_files:
-                    out_stem = out_file.stem
-                    if norm_title in cls._normalize_title(out_stem) and out_file.stat().st_size > 1000:
-                        chap["status"] = "done"
-                        chap["audio_url"] = f"/api/audio/output/{out_file.name}"
-                        chap["completed_at"] = datetime.fromtimestamp(out_file.stat().st_mtime).isoformat()
-                        break
+                    out_norm = cls._normalize_title(out_file.stem)
+                    if out_norm and (norm_title == out_norm or norm_title in out_norm or out_norm in norm_title):
+                        if out_file.stat().st_size > 5000:
+                            chap["status"] = "done"
+                            chap["audio_url"] = f"/api/audio/output/{out_file.name}"
+                            if not chap.get("completed_at"):
+                                chap["completed_at"] = datetime.fromtimestamp(out_file.stat().st_mtime).isoformat()
+                            break
 
         # Save synced state
         cls.save_project(book_id, {
             "book_id": book_id,
-            "book_title": book_title,
+            "book_title": cls.normalize_str(book_title),
             "chapters": [
                 {
                     "id": c.get("id"),
@@ -146,9 +146,10 @@ class BookProjectManager:
         """
         Updates chapter status to 'done' and saves progress to project JSON.
         """
-        data = cls.load_project(book_id) or {
-            "book_id": book_id,
-            "book_title": chapter_title,
+        norm_book_id = cls.get_book_id(book_id)
+        data = cls.load_project(norm_book_id) or {
+            "book_id": norm_book_id,
+            "book_title": cls.normalize_str(chapter_title),
             "chapters": []
         }
 
@@ -172,7 +173,7 @@ class BookProjectManager:
                 "completed_at": datetime.now().isoformat()
             })
 
-        cls.save_project(book_id, data)
+        cls.save_project(norm_book_id, data)
 
     @classmethod
     def get_all_projects(cls) -> List[Dict[str, Any]]:
@@ -198,10 +199,12 @@ class BookProjectManager:
                 pass
         return projects
 
-    @staticmethod
-    def _normalize_title(title: str) -> str:
+    @classmethod
+    def _normalize_title(cls, title: str) -> str:
         if not title:
             return ""
-        t = re.sub(r"^\d+[\.\s\-:]+", "", title) # remove leading 1. 2.
-        t = re.sub(r"[^\wа-яА-ЯёЁ]", "", t).lower()
+        t = cls.normalize_str(title)
+        t = re.sub(r"^\d+[\.\s\-_:]+", "", t) # remove leading chapter numbers
+        # Remove ALL underscores, punctuation, spaces, non-alphanumeric chars
+        t = re.sub(r"[^a-zA-Zа-яА-ЯёЁ0-9]", "", t).lower()
         return t
