@@ -1,0 +1,25 @@
+{
+  "book_id": "book_вдуй_на_колеснице",
+  "book_title": "book вдуй на колеснице",
+  "chapters": [
+    {
+      "id": "chapter_1",
+      "index": 1,
+      "title": "1. Ползком через детство",
+      "char_count": 3694,
+      "status": "done",
+      "audio_url": "/api/audio/output/01_Polzkom.mp3",
+      "completed_at": "2026-08-26T11:52:08.753650"
+    },
+    {
+      "id": "chapter_2",
+      "index": 2,
+      "title": "2. Первый компьютер: сквозь грядки и огонь",
+      "char_count": 2728,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    }
+  ],
+  "updated_at": "2026-08-26T11:52:08.753886"
+}

@@ -22,6 +22,7 @@ from chapter_parser import ChapterParser
 from voice_manager import VoiceManager
 from tts_client import FishAudioClient
 from pipeline import TextToSpeechPipeline, PipelineProgress
+from book_manager import BookProjectManager
 
 app = FastAPI(title="AudioBook TTS Studio", description="Fish Audio S2 Book Narrator")
 
@@ -70,6 +71,15 @@ class GenerateRequest(BaseModel):
     top_k: int = 30
     chunk_length: int = 300
     instruct: Optional[str] = None
+    book_id: Optional[str] = None
+    chapter_id: Optional[str] = None
+    chapter_title: Optional[str] = None
+
+class RecordChapterRequest(BaseModel):
+    book_id: str
+    chapter_id: str
+    chapter_title: str
+    audio_url: str
 
 
 # --- API Routes ---
@@ -143,10 +153,13 @@ async def extract_file_text(file: UploadFile = File(...)):
         raw_text = extracted["raw_text"]
         chapters_raw = extracted["chapters_raw"]
         
+        base_title = Path(filename).stem
+        book_id, synced_chapters = BookProjectManager.sync_chapters_with_saved_progress(base_title, chapters_raw)
+        
         # Enrich chapters with stressed text and chunks
         processed_chapters = []
         all_chunks = []
-        for idx, chap in enumerate(chapters_raw):
+        for idx, chap in enumerate(synced_chapters):
             stressed = dictionary.apply(chap["text"])
             chap_chunks = TextChunker.split_into_chunks(stressed)
             all_chunks.extend(chap_chunks)
@@ -159,17 +172,20 @@ async def extract_file_text(file: UploadFile = File(...)):
                 "chunks": chap_chunks,
                 "char_count": len(chap["text"]),
                 "chunk_count": len(chap_chunks),
-                "status": "idle",
-                "audio_url": None
+                "status": chap.get("status", "idle"),
+                "audio_url": chap.get("audio_url"),
+                "completed_at": chap.get("completed_at")
             })
 
         return {
             "filename": filename,
+            "book_id": book_id,
             "raw_text": raw_text,
             "chapters": processed_chapters,
             "total_chars": len(raw_text),
             "total_chapters": len(processed_chapters),
-            "total_chunks": len(all_chunks)
+            "total_chunks": len(all_chunks),
+            "done_chapters": sum(1 for c in processed_chapters if c.get("status") == "done")
         }
     finally:
         if temp_path.exists():
@@ -179,33 +195,58 @@ async def extract_file_text(file: UploadFile = File(...)):
 def preview_text(req: PreviewRequest):
     raw_text = DocumentExtractor.clean_text(req.text)
     chapters_raw = ChapterParser.split_into_chapters(raw_text, default_book_title="Книга")
+    book_id, synced_chapters = BookProjectManager.sync_chapters_with_saved_progress("Книга", chapters_raw)
     
     processed_chapters = []
     all_chunks = []
-    for chap in chapters_raw:
+    for idx, chap in enumerate(synced_chapters):
         stressed = dictionary.apply(chap["text"])
         chap_chunks = TextChunker.split_into_chunks(stressed, max_chunk_len=req.max_chunk_len)
         all_chunks.extend(chap_chunks)
         processed_chapters.append({
-            "id": chap["id"],
-            "index": chap["index"],
+            "id": chap.get("id") or f"chapter_{idx + 1}",
+            "index": idx + 1,
             "title": chap["title"],
             "text": chap["text"],
             "stressed_text": stressed,
             "chunks": chap_chunks,
-            "char_count": chap["char_count"],
+            "char_count": len(chap["text"]),
             "chunk_count": len(chap_chunks),
-            "status": "idle",
-            "audio_url": None
+            "status": chap.get("status", "idle"),
+            "audio_url": chap.get("audio_url"),
+            "completed_at": chap.get("completed_at")
         })
 
     return {
+        "book_id": book_id,
         "raw_text": raw_text,
         "chapters": processed_chapters,
         "total_chars": len(raw_text),
         "total_chapters": len(processed_chapters),
-        "total_chunks": len(all_chunks)
+        "total_chunks": len(all_chunks),
+        "done_chapters": sum(1 for c in processed_chapters if c.get("status") == "done")
     }
+
+@app.get("/api/projects")
+def list_book_projects():
+    return BookProjectManager.get_all_projects()
+
+@app.get("/api/projects/{book_id}")
+def get_book_project(book_id: str):
+    data = BookProjectManager.load_project(book_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Проект книги не найден")
+    return data
+
+@app.post("/api/projects/record-chapter")
+def record_chapter(req: RecordChapterRequest):
+    BookProjectManager.record_chapter_completion(
+        book_id=req.book_id,
+        chapter_id=req.chapter_id,
+        chapter_title=req.chapter_title,
+        audio_url=req.audio_url
+    )
+    return {"status": "saved", "book_id": req.book_id, "chapter_id": req.chapter_id}
 
 def run_pipeline_task(session_id: str, req: GenerateRequest):
     prog = sessions[session_id]
@@ -226,7 +267,7 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
 
         chunks_to_process = req.chunks if (req.chunks and len(req.chunks) > 0) else req.text
 
-        pipeline.process(
+        res_prog = pipeline.process(
             text_or_chunks=chunks_to_process,
             voice_name=req.voice_name,
             output_name=req.output_name,
@@ -238,6 +279,14 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
             progress_callback=on_progress,
             session_id=session_id
         )
+
+        # Auto-record chapter completion in book manager log
+        if prog.status == "completed" and prog.output_file and req.book_id:
+            audio_url = f"/api/audio/output/{prog.output_file.name}"
+            chap_id = req.chapter_id or f"chap_{session_id}"
+            chap_title = req.chapter_title or req.output_name or "Chapter"
+            BookProjectManager.record_chapter_completion(req.book_id, chap_id, chap_title, audio_url)
+
     except Exception as e:
         if prog.status != "cancelled":
             prog.status = "error"

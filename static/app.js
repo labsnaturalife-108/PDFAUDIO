@@ -592,6 +592,7 @@ function initStudio() {
         });
         const data = await res.json();
         
+        currentBookId = data.book_id || 'custom_book';
         loadedChapters = data.chapters || [];
         renderChaptersList();
 
@@ -729,12 +730,35 @@ function initStudio() {
 
 // --- Chapter Management Functions ---
 
+let currentBookId = 'default_book';
+
 function renderChaptersList() {
   const container = document.getElementById('chaptersList');
-  const badge = document.getElementById('chaptersCountBadge');
+  const doneBadge = document.getElementById('chaptersDoneBadge');
+  const totalBadge = document.getElementById('chaptersTotalBadge');
+  const percentBadge = document.getElementById('chaptersPercentBadge');
+  const progressFill = document.getElementById('bookProgressFill');
+  const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
+
   if (!container) return;
 
-  if (badge) badge.textContent = `${loadedChapters.length} глав`;
+  const totalCount = loadedChapters.length;
+  const doneCount = loadedChapters.filter(c => c.status === 'done').length;
+  const percent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  if (doneBadge) doneBadge.textContent = doneCount;
+  if (totalBadge) totalBadge.textContent = totalCount;
+  if (percentBadge) percentBadge.textContent = `${percent}%`;
+  if (progressFill) progressFill.style.width = `${percent}%`;
+
+  if (btnSynthesizeAll) {
+    const remaining = totalCount - doneCount;
+    if (remaining === 0 && totalCount > 0) {
+      btnSynthesizeAll.textContent = '✓ Все главы озвучены';
+    } else {
+      btnSynthesizeAll.textContent = remaining < totalCount ? `⚡ Озвучить оставшиеся главы (${remaining})` : '⚡ Озвучить все главы';
+    }
+  }
 
   if (loadedChapters.length === 0) {
     container.innerHTML = `
@@ -750,6 +774,7 @@ function renderChaptersList() {
   container.innerHTML = '';
   loadedChapters.forEach((chap, idx) => {
     const isCurrentActive = chap.id === activeChapterId;
+    const isDone = chap.status === 'done';
     const card = document.createElement('div');
     card.className = `chapter-card-item ${isCurrentActive ? 'active-chapter' : ''} ${chap.status}`;
     card.id = `chapCard-${chap.id}`;
@@ -764,7 +789,7 @@ function renderChaptersList() {
     card.innerHTML = `
       <div class="chapter-item-top">
         <div class="chapter-title-group">
-          <span class="chapter-icon">📖</span>
+          <span class="chapter-icon">${isDone ? '✅' : '📖'}</span>
           <input type="text" class="chapter-title-input" value="${escapeHtml(chap.title)}" 
                  onchange="updateChapterTitle('${chap.id}', this.value)" title="Нажмите, чтобы переименовать главу">
         </div>
@@ -777,7 +802,7 @@ function renderChaptersList() {
       <div class="chapter-actions-row">
         <div class="chapter-left-actions">
           <button class="btn-synthesize-chap" onclick="synthesizeSingleChapter('${chap.id}')" id="btnSynthChap-${chap.id}">
-            ▶️ Озвучить эту главу
+            ${isDone ? '🔄 Переозвучить' : '▶️ Озвучить эту главу'}
           </button>
           <button class="btn-sm-text" onclick="showChapterChunks('${chap.id}')">
             👁️ Показать чанки (${chap.chunks.length})
@@ -856,6 +881,9 @@ async function synthesizeSingleChapter(chapId) {
 
   const payload = {
     chunks: chap.chunks,
+    book_id: currentBookId,
+    chapter_id: chap.id,
+    chapter_title: chap.title,
     voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
     output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
     output_format: selectedFormat,
@@ -904,6 +932,18 @@ function trackChapterProgress(chapId, sessionId) {
           chap.status = 'done';
           chap.audio_url = data.output_url;
           renderChaptersList();
+
+          // Persist progress to server
+          fetch('/api/projects/record-chapter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              book_id: currentBookId,
+              chapter_id: chap.id,
+              chapter_title: chap.title,
+              audio_url: data.output_url
+            })
+          }).catch(() => {});
         }
       } else if (data.status === 'cancelled') {
         clearInterval(checkInterval);
@@ -927,16 +967,23 @@ function trackChapterProgress(chapId, sessionId) {
 }
 
 async function runBatchAllChapters() {
+  const uncompleted = loadedChapters.filter(c => c.status !== 'done');
+  if (uncompleted.length === 0) {
+    alert('Все главы этой книги уже успешно озвучены!');
+    return;
+  }
+
   isBatchRunning = true;
   const btnSynthesizeAll = document.getElementById('btnSynthesizeAllChapters');
   if (btnSynthesizeAll) {
     btnSynthesizeAll.disabled = true;
-    btnSynthesizeAll.textContent = '⏳ Озвучка глав книги...';
+    btnSynthesizeAll.textContent = '⏳ Озвучка книги...';
   }
 
   for (let i = 0; i < loadedChapters.length; i++) {
+    if (!isBatchRunning) break;
     const chap = loadedChapters[i];
-    if (chap.status === 'done') continue; // Skip already finished chapters
+    if (chap.status === 'done') continue; // Skip already finished chapters!
 
     await new Promise((resolve) => {
       showChapterChunks(chap.id);
@@ -945,6 +992,9 @@ async function runBatchAllChapters() {
 
       const payload = {
         chunks: chap.chunks,
+        book_id: currentBookId,
+        chapter_id: chap.id,
+        chapter_title: chap.title,
         voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
         output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
         output_format: selectedFormat,
@@ -966,6 +1016,11 @@ async function runBatchAllChapters() {
         startProgressPolling();
 
         const timer = setInterval(async () => {
+          if (!isBatchRunning) {
+            clearInterval(timer);
+            resolve();
+            return;
+          }
           try {
             const pRes = await fetch(`/api/progress/${data.session_id}`);
             const pData = await pRes.json();
@@ -973,6 +1028,23 @@ async function runBatchAllChapters() {
               clearInterval(timer);
               chap.status = 'done';
               chap.audio_url = pData.output_url;
+              renderChaptersList();
+
+              fetch('/api/projects/record-chapter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  book_id: currentBookId,
+                  chapter_id: chap.id,
+                  chapter_title: chap.title,
+                  audio_url: pData.output_url
+                })
+              }).catch(() => {});
+
+              resolve();
+            } else if (pData.status === 'cancelled') {
+              clearInterval(timer);
+              chap.status = 'idle';
               renderChaptersList();
               resolve();
             } else if (pData.status === 'error') {
@@ -998,9 +1070,8 @@ async function runBatchAllChapters() {
   isBatchRunning = false;
   if (btnSynthesizeAll) {
     btnSynthesizeAll.disabled = false;
-    btnSynthesizeAll.textContent = '⚡ Озвучить все главы';
+    renderChaptersList();
   }
-  alert('Пакетная озвучка всех глав завершена!');
 }
 
 async function synthesizeRawText(rawText) {
@@ -1056,6 +1127,7 @@ async function handleFileUpload(file) {
     document.getElementById('statCharCount').textContent = data.total_chars;
     document.getElementById('outputNameInput').value = file.name.replace(/\.[^/.]+$/, "");
 
+    currentBookId = data.book_id || file.name.replace(/\.[^/.]+$/, "");
     loadedChapters = data.chapters || [];
     renderChaptersList();
 
