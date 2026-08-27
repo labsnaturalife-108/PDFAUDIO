@@ -63,17 +63,20 @@ class AudioMerger:
             shutil.copy2(chunk_files[0], output_file)
             return output_file
 
+        import time
+        uid = f"{os.getpid()}_{time.time_ns()}"
         temp_dir = output_file.parent / ".tmp_merge"
         temp_dir.mkdir(parents=True, exist_ok=True)
         
         sample_rate, channels = AudioMerger.probe_audio(chunk_files[0])
         silent_file = None
-        list_file_path = temp_dir / "concat_list.txt"
+        list_file_path = temp_dir / f"concat_list_{uid}.txt"
 
         try:
             if pause_duration > 0:
-                silent_file = temp_dir / "silence.wav"
-                AudioMerger.create_silence(pause_duration, sample_rate, channels, silent_file)
+                silent_file = temp_dir / f"silence_{sample_rate}_{channels}_{pause_duration}.wav"
+                if not silent_file.exists():
+                    AudioMerger.create_silence(pause_duration, sample_rate, channels, silent_file)
 
             with open(list_file_path, "w", encoding="utf-8") as f:
                 for i, chunk_path in enumerate(chunk_files):

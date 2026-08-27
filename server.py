@@ -328,8 +328,9 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
         )
 
         # Auto-record chapter completion in book manager log
-        if prog.status == "completed" and prog.output_file and req.book_id:
-            audio_url = f"/api/audio/output/{prog.output_file.name}"
+        completed_prog = res_prog if (res_prog and res_prog.status == "completed") else sessions.get(session_id)
+        if completed_prog and completed_prog.status == "completed" and completed_prog.output_file and req.book_id:
+            audio_url = f"/api/audio/output/{completed_prog.output_file.name}"
             chap_id = req.chapter_id or f"chap_{session_id}"
             chap_title = req.output_name or req.chapter_title or "Chapter"
             BookProjectManager.record_chapter_completion(req.book_id, chap_id, chap_title, audio_url)
