@@ -1,0 +1,313 @@
+{
+  "book_id": "глава_02_дaкшa_проклинaет_господa_шиву",
+  "book_title": "Глава 02. Дaкшa проклинaет Господa Шиву",
+  "chapters": [
+    {
+      "id": "chapter_1",
+      "index": 1,
+      "title": "1. ТЕКСТ 1",
+      "char_count": 1508,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_2",
+      "index": 2,
+      "title": "2. ТЕКСТ 2",
+      "char_count": 2378,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_3",
+      "index": 3,
+      "title": "3. ТЕКСТ 3",
+      "char_count": 577,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_4",
+      "index": 4,
+      "title": "4. ТЕКСТ 4",
+      "char_count": 1159,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_5",
+      "index": 5,
+      "title": "5. ТЕКСТ 5",
+      "char_count": 530,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_6",
+      "index": 6,
+      "title": "6. ТЕКСТ 6",
+      "char_count": 551,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_7",
+      "index": 7,
+      "title": "7. ТЕКСТ 7",
+      "char_count": 545,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_8",
+      "index": 8,
+      "title": "8. ТЕКСТ 8",
+      "char_count": 996,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_9",
+      "index": 9,
+      "title": "9. ТЕКСТ 9",
+      "char_count": 1363,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_10",
+      "index": 10,
+      "title": "10. ТЕКСТ 10",
+      "char_count": 1541,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_11",
+      "index": 11,
+      "title": "11. ТЕКСТ 11",
+      "char_count": 821,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_12",
+      "index": 12,
+      "title": "12. ТЕКСТ 12",
+      "char_count": 583,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_13",
+      "index": 13,
+      "title": "13. ТЕКСТ 13",
+      "char_count": 1434,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_14",
+      "index": 14,
+      "title": "14. ТЕКСТ 14─15",
+      "char_count": 3019,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_15",
+      "index": 15,
+      "title": "15. ТЕКСТ 16",
+      "char_count": 1565,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_16",
+      "index": 16,
+      "title": "16. ТЕКСТ 17",
+      "char_count": 605,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_17",
+      "index": 17,
+      "title": "17. ТЕКСТ 18",
+      "char_count": 1995,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_18",
+      "index": 18,
+      "title": "18. ТЕКСТ 19",
+      "char_count": 2184,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_19",
+      "index": 19,
+      "title": "19. ТЕКСТ 20",
+      "char_count": 1943,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_20",
+      "index": 20,
+      "title": "20. ТЕКСТ 21",
+      "char_count": 1364,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_21",
+      "index": 21,
+      "title": "21. ТЕКСТ 22",
+      "char_count": 1598,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_22",
+      "index": 22,
+      "title": "22. ТЕКСТ 23",
+      "char_count": 621,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_23",
+      "index": 23,
+      "title": "23. ТЕКСТ 24",
+      "char_count": 1130,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_24",
+      "index": 24,
+      "title": "24. ТЕКСТ 25",
+      "char_count": 773,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_25",
+      "index": 25,
+      "title": "25. ТЕКСТ 26",
+      "char_count": 2919,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_26",
+      "index": 26,
+      "title": "26. ТЕКСТ 27",
+      "char_count": 1911,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_27",
+      "index": 27,
+      "title": "27. ТЕКСТ 28",
+      "char_count": 2316,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_28",
+      "index": 28,
+      "title": "28. ТЕКСТ 29",
+      "char_count": 1393,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_29",
+      "index": 29,
+      "title": "29. ТЕКСТ 30",
+      "char_count": 2759,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_30",
+      "index": 30,
+      "title": "30. ТЕКСТ 31",
+      "char_count": 6063,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_31",
+      "index": 31,
+      "title": "31. ТЕКСТ 32",
+      "char_count": 1622,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_32",
+      "index": 32,
+      "title": "32. ТЕКСТ 33",
+      "char_count": 1673,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_33",
+      "index": 33,
+      "title": "33. ТЕКСТ 34",
+      "char_count": 1330,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    },
+    {
+      "id": "chapter_34",
+      "index": 34,
+      "title": "34. ТЕКСТ 35",
+      "char_count": 3946,
+      "status": "idle",
+      "audio_url": null,
+      "completed_at": null
+    }
+  ],
+  "updated_at": "2026-08-27T10:35:26.047735"
+}
