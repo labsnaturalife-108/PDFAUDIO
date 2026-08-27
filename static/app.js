@@ -859,9 +859,17 @@ function initStudio() {
   const outputNameInput = document.getElementById('outputNameInput');
   if (outputNameInput) {
     outputNameInput.addEventListener('input', () => {
+      const val = outputNameInput.value.trim();
       const activeChap = loadedChapters.find(c => c.id === activeChapterId);
       if (activeChap) {
-        activeChap.custom_output_name = outputNameInput.value.trim();
+        activeChap.custom_output_name = val;
+        if (val) {
+          activeChap.title = val;
+          const cardTitleInput = document.querySelector(`#chapCard-${activeChap.id} .chapter-title-input`);
+          if (cardTitleInput) {
+            cardTitleInput.value = val;
+          }
+        }
       }
     });
   }
@@ -1246,6 +1254,11 @@ function updateChapterTitle(chapId, newTitle) {
   const chap = loadedChapters.find(c => c.id === chapId);
   if (chap && newTitle.trim()) {
     chap.title = newTitle.trim();
+    chap.custom_output_name = newTitle.trim();
+    if (activeChapterId === chapId) {
+      const nameInput = document.getElementById('outputNameInput');
+      if (nameInput) nameInput.value = chap.title;
+    }
   }
 }
 
@@ -1268,19 +1281,14 @@ function deleteChapter(chapId) {
 }
 
 function showChapterChunks(chapId) {
-  const previousChap = loadedChapters.find(c => c.id === activeChapterId);
-  const nameInput = document.getElementById('outputNameInput');
-  if (previousChap && nameInput && nameInput.value.trim()) {
-    previousChap.custom_output_name = nameInput.value.trim();
-  }
-
   activeChapterId = chapId;
   const chap = loadedChapters.find(c => c.id === chapId);
+  const nameInput = document.getElementById('outputNameInput');
   if (chap) {
     activeChunks = chap.chunks;
     renderChunksGrid(activeChunks);
     if (nameInput) {
-      nameInput.value = chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
+      nameInput.value = chap.custom_output_name || chap.title;
     }
   }
   // Re-highlight active card
@@ -1293,22 +1301,24 @@ async function synthesizeSingleChapter(chapId) {
   const chap = loadedChapters.find(c => c.id === chapId);
   if (!chap) return;
 
-  const nameInput = document.getElementById('outputNameInput');
-  let currentOutputName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'));
-  
-  if (activeChapterId === chapId) {
-    chap.custom_output_name = currentOutputName;
-  }
-
   // Clear any existing active session timers
   if (chapterTimers[chapId]) {
     clearInterval(chapterTimers[chapId]);
     delete chapterTimers[chapId];
   }
 
+  // If user changed input, capture it immediately
+  const nameInput = document.getElementById('outputNameInput');
+  let currentOutputName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (chap.custom_output_name || chap.title);
+
+  if (activeChapterId === chapId) {
+    chap.custom_output_name = currentOutputName;
+    chap.title = currentOutputName;
+  }
+
   showChapterChunks(chapId);
 
-  // If we had a custom name, preserve it after showChapterChunks
+  // If this chapter has custom name, ensure it is in the input
   if (chap.custom_output_name && nameInput) {
     nameInput.value = chap.custom_output_name;
     currentOutputName = chap.custom_output_name;
@@ -1322,7 +1332,7 @@ async function synthesizeSingleChapter(chapId) {
     chunks: chap.chunks,
     book_id: currentBookId,
     chapter_id: chap.id,
-    chapter_title: chap.title,
+    chapter_title: currentOutputName,
     voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
     output_name: currentOutputName,
     output_format: selectedFormat,

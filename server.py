@@ -331,7 +331,7 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
         if prog.status == "completed" and prog.output_file and req.book_id:
             audio_url = f"/api/audio/output/{prog.output_file.name}"
             chap_id = req.chapter_id or f"chap_{session_id}"
-            chap_title = req.chapter_title or req.output_name or "Chapter"
+            chap_title = req.output_name or req.chapter_title or "Chapter"
             BookProjectManager.record_chapter_completion(req.book_id, chap_id, chap_title, audio_url)
 
     except Exception as e:
