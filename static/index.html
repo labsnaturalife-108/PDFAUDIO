@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AudioBook Studio — Flash & Fish Audio S2</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.6.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -433,7 +433,7 @@
               <button class="btn-outline-pill flex-1" id="btnCopyVedicCleaned" type="button">
                 📋 Скопировать
               </button>
-              <button class="btn-outline-pill flex-1" id="btnDownloadVedicCleaned" type="button">
+              <button class="btn-outline-pill flex-1" id="btnDownloadVedicCleaned" onclick="downloadVedicCleanedFile(event)" type="button">
                 ⬇️ Скачать .TXT
               </button>
               <button class="btn-emerald flex-1" id="btnSendToStudio" type="button" title="Передать этот текст на главную вкладку Студии и разбить по главам">
@@ -583,6 +583,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.6.0"></script>
 </body>
 </html>

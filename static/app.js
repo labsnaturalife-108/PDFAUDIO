@@ -256,36 +256,53 @@ function initVedicCleaner() {
     });
   }
 
-  if (btnDownload) {
-    btnDownload.addEventListener('click', () => {
-      const text = cleanedOutput.value;
-      if (!text) {
-        alert('Нет очищенного текста для скачивания!');
-        return;
-      }
+  window.downloadVedicCleanedFile = function(event) {
+    if (event) {
+      try { event.preventDefault(); event.stopPropagation(); } catch (e) {}
+    }
+    const cleanedOutput = document.getElementById('vedicCleanedOutput');
+    const rawInput = document.getElementById('vedicRawInput');
+    const text = cleanedOutput ? cleanedOutput.value : '';
+    if (!text || !text.trim()) {
+      alert('Нет очищенного текста для скачивания!');
+      return;
+    }
 
-      let baseName = currentVedicOriginalFileName;
-      if (!baseName) {
-        const firstLine = text.split('\n')[0].trim();
-        if (firstLine) {
-          baseName = firstLine.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_').replace(/\s+/g, '_').slice(0, 80);
-        } else {
-          baseName = 'cleaned_text';
+    let baseName = currentVedicOriginalFileName;
+    if (!baseName && rawInput && rawInput.value) {
+      const mFile = rawInput.value.match(/\[Загружен файл:\s*([^,\]]+)/i);
+      if (mFile) {
+        baseName = mFile[1].replace(/\.[^/.]+$/, "").trim();
+      }
+    }
+
+    if (!baseName) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      for (const l of lines) {
+        if (l.length >= 3 && !l.startsWith('ТЕКСТ') && !l.startsWith('TEXT')) {
+          baseName = l.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_').replace(/\s+/g, '_').slice(0, 80);
+          break;
         }
       }
+    }
 
-      const downloadFileName = `${baseName}_end.txt`;
+    if (!baseName) baseName = 'cleaned_text';
+    baseName = baseName.replace(/_end$/i, ''); // prevent double _end
+    const downloadFileName = `${baseName}_end.txt`;
 
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = downloadFileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (btnDownload) {
+    btnDownload.onclick = window.downloadVedicCleanedFile;
   }
 
   if (btnSendToStudio) {
