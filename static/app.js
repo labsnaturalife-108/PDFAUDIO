@@ -171,9 +171,13 @@ function initVedicCleaner() {
     });
   }
 
+  let currentVedicOriginalFileName = '';
+
   async function handleVedicFileUpload(file) {
     const formData = new FormData();
     formData.append('file', file);
+    currentVedicOriginalFileName = file.name.replace(/\.[^/.]+$/, "");
+
     try {
       if (btnClean) {
         btnClean.disabled = true;
@@ -206,6 +210,15 @@ function initVedicCleaner() {
         alert('Пожалуйста, вставьте текст с санскритом или загрузите файл слева!');
         return;
       }
+
+      // If user pasted text without file upload, derive file name from first line
+      if (!currentVedicOriginalFileName) {
+        const firstLine = text.split('\n')[0].trim();
+        if (firstLine) {
+          currentVedicOriginalFileName = firstLine.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_').replace(/\s+/g, '_').slice(0, 80);
+        }
+      }
+
       try {
         btnClean.disabled = true;
         btnClean.textContent = '⏳ Очистка текста от санскрита...';
@@ -250,11 +263,24 @@ function initVedicCleaner() {
         alert('Нет очищенного текста для скачивания!');
         return;
       }
+
+      let baseName = currentVedicOriginalFileName;
+      if (!baseName) {
+        const firstLine = text.split('\n')[0].trim();
+        if (firstLine) {
+          baseName = firstLine.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_').replace(/\s+/g, '_').slice(0, 80);
+        } else {
+          baseName = 'cleaned_text';
+        }
+      }
+
+      const downloadFileName = `${baseName}_end.txt`;
+
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'cleaned_vedic_text.txt';
+      a.download = downloadFileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
