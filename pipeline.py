@@ -1,3 +1,4 @@
+import re
 import uuid
 import time
 from pathlib import Path
@@ -186,4 +187,4 @@ class TextToSpeechPipeline:
         if progress_callback:
             progress_callback(progress)
 
-        return merged_path
+        return progress

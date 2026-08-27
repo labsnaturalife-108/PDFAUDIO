@@ -95,7 +95,8 @@ def cmd_convert(args):
             progress_callback=on_progress
         )
 
-    console.print(f"\n[bold green]✓ Готово![/bold green] Аудиофайл успешно сохранен:\n[bold cyan]{out_file.resolve()}[/bold cyan]\n")
+        out_path = out_file.output_file if (hasattr(out_file, 'output_file') and out_file.output_file) else out_file
+        console.print(f"\n[bold green]✓ Готово![/bold green] Аудиофайл успешно сохранен:\n[bold cyan]{out_path.resolve()}[/bold cyan]\n")
 
 def cmd_server(args):
     """Starts the FastAPI Web Studio server."""
