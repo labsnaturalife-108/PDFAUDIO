@@ -168,7 +168,8 @@ class TextToSpeechPipeline:
             progress_callback(progress)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        safe_name = (output_name or f"audiobook_{timestamp}").replace(" ", "_")
+        clean_name = re.sub(r'\.(mp3|wav|ogg|flac|m4a)$', '', (output_name or '').strip(), flags=re.IGNORECASE)
+        safe_name = (clean_name or f"audiobook_{timestamp}").replace(" ", "_")
         output_file = OUTPUT_DIR / f"{safe_name}.{output_format}"
 
         merged_path = AudioMerger.merge(

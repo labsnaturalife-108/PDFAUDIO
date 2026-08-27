@@ -855,6 +855,17 @@ function initStudio() {
     }
   });
 
+  // Output filename live change handler
+  const outputNameInput = document.getElementById('outputNameInput');
+  if (outputNameInput) {
+    outputNameInput.addEventListener('input', () => {
+      const activeChap = loadedChapters.find(c => c.id === activeChapterId);
+      if (activeChap) {
+        activeChap.custom_output_name = outputNameInput.value.trim();
+      }
+    });
+  }
+
   // Clear text button
   if (btnClearText) {
     btnClearText.addEventListener('click', () => {
@@ -1257,12 +1268,20 @@ function deleteChapter(chapId) {
 }
 
 function showChapterChunks(chapId) {
+  const previousChap = loadedChapters.find(c => c.id === activeChapterId);
+  const nameInput = document.getElementById('outputNameInput');
+  if (previousChap && nameInput && nameInput.value.trim()) {
+    previousChap.custom_output_name = nameInput.value.trim();
+  }
+
   activeChapterId = chapId;
   const chap = loadedChapters.find(c => c.id === chapId);
   if (chap) {
     activeChunks = chap.chunks;
     renderChunksGrid(activeChunks);
-    document.getElementById('outputNameInput').value = chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
+    if (nameInput) {
+      nameInput.value = chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
+    }
   }
   // Re-highlight active card
   document.querySelectorAll('.chapter-card-item').forEach(c => c.classList.remove('active-chapter'));
@@ -1274,6 +1293,13 @@ async function synthesizeSingleChapter(chapId) {
   const chap = loadedChapters.find(c => c.id === chapId);
   if (!chap) return;
 
+  const nameInput = document.getElementById('outputNameInput');
+  let currentOutputName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'));
+  
+  if (activeChapterId === chapId) {
+    chap.custom_output_name = currentOutputName;
+  }
+
   // Clear any existing active session timers
   if (chapterTimers[chapId]) {
     clearInterval(chapterTimers[chapId]);
@@ -1281,6 +1307,12 @@ async function synthesizeSingleChapter(chapId) {
   }
 
   showChapterChunks(chapId);
+
+  // If we had a custom name, preserve it after showChapterChunks
+  if (chap.custom_output_name && nameInput) {
+    nameInput.value = chap.custom_output_name;
+    currentOutputName = chap.custom_output_name;
+  }
 
   // Update card UI
   chap.status = 'generating';
@@ -1292,7 +1324,7 @@ async function synthesizeSingleChapter(chapId) {
     chapter_id: chap.id,
     chapter_title: chap.title,
     voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
-    output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
+    output_name: currentOutputName,
     output_format: selectedFormat,
     pause_duration: parseFloat(document.getElementById('paramPause').value),
     speed: parseFloat(document.getElementById('paramSpeed').value),
@@ -1397,13 +1429,14 @@ async function runBatchAllChapters() {
       chap.status = 'generating';
       renderChaptersList();
 
+      const outputName = chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
       const payload = {
         chunks: chap.chunks,
         book_id: currentBookId,
         chapter_id: chap.id,
         chapter_title: chap.title,
         voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
-        output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
+        output_name: outputName,
         output_format: selectedFormat,
         pause_duration: parseFloat(document.getElementById('paramPause').value),
         speed: parseFloat(document.getElementById('paramSpeed').value),
@@ -1507,13 +1540,14 @@ async function synthesizeSelectedChapters() {
       chap.status = 'generating';
       renderChaptersList();
 
+      const outputName = chap.custom_output_name || chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_');
       const payload = {
         chunks: chap.chunks,
         book_id: currentBookId,
         chapter_id: chap.id,
         chapter_title: chap.title,
         voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
-        output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
+        output_name: outputName,
         output_format: selectedFormat,
         pause_duration: parseFloat(document.getElementById('paramPause').value),
         speed: parseFloat(document.getElementById('paramSpeed').value),

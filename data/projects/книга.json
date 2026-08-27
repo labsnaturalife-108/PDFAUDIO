@@ -1,0 +1,16 @@
+{
+  "book_id": "книга",
+  "book_title": "Книга",
+  "chapters": [
+    {
+      "id": "chapter_1",
+      "index": 1,
+      "title": "1. ТЕКСТ 1",
+      "char_count": 428,
+      "status": "done",
+      "audio_url": "/api/audio/output/1._ТЕКСТ_1.mp3",
+      "completed_at": "2026-08-27T15:08:17.201214"
+    }
+  ],
+  "updated_at": "2026-08-27T15:08:17.201243"
+}

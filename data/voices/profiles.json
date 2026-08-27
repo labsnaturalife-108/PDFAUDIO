@@ -18,10 +18,10 @@
   "Вова": {
     "audio_path": "/Users/jeka/Documents/Video to MP3/PDFAUDIO/data/voices/Вова_upload_владимир антоник.wav",
     "text": "Вечером, по заходе солнца, с изнемогавшей от горя и усталости, Марусей приключился вдруг сильный озноб. Этот озноб свалил её в постель.",
-    "speed": 1.25,
+    "speed": 1.1,
     "pause_duration": 0.8,
-    "temperature": 0.9,
-    "instruct": "Тестовая инструкция для голоса Вова"
+    "temperature": 0.92,
+    "instruct": "Read expressively like a professional audiobook narrator. Use vivid intonation, emotional depth, and natural pauses. Strictly pronounce Russian 'е' as 'Е' and 'ё' as 'Ё'."
   },
   "Sasha ru": {
     "audio_path": "/Users/jeka/Documents/Video to MP3/PDFAUDIO/data/voices/Sasha ru_upload_Sasha.MP3",
