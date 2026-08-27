@@ -23,6 +23,7 @@ from voice_manager import VoiceManager
 from tts_client import FishAudioClient
 from pipeline import TextToSpeechPipeline, PipelineProgress
 from book_manager import BookProjectManager
+from vedic_cleaner import VedicTextCleaner
 
 app = FastAPI(title="AudioBook TTS Studio", description="Fish Audio S2 Book Narrator")
 
@@ -55,6 +56,9 @@ class DictionaryEntry(BaseModel):
 class PreviewRequest(BaseModel):
     text: str
     max_chunk_len: int = DEFAULT_CHUNK_LENGTH
+
+class VedicCleanRequest(BaseModel):
+    text: str
 
 class GenerateRequest(BaseModel):
     chunks: Optional[List[str]] = None
@@ -99,6 +103,29 @@ def get_status():
         "fish_audio_connected": tts_online,
         "default_voice_exists": Path("/Users/jeka/fish-audio-s2/voice/reference.wav").exists()
     }
+
+@app.post("/api/vedic/clean")
+def clean_vedic_text(req: VedicCleanRequest):
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Текст для очистки пуст")
+    return VedicTextCleaner.clean_with_stats(req.text)
+
+@app.post("/api/vedic/clean-file")
+async def clean_vedic_file(file: UploadFile = File(...)):
+    filename = file.filename or "book.txt"
+    temp_path = CACHE_DIR / f"clean_upload_{filename}"
+    with open(temp_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        extracted = DocumentExtractor.extract(temp_path)
+        raw_text = extracted["raw_text"]
+        result = VedicTextCleaner.clean_with_stats(raw_text)
+        result["filename"] = filename
+        return result
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 @app.get("/api/voices")
 def get_voices():

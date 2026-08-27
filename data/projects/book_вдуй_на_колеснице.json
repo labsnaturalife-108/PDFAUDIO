@@ -61,18 +61,18 @@
       "index": 7,
       "title": "7. Уход. Новый виток",
       "char_count": 1938,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/7._Уход._Новый_виток.mp3",
+      "completed_at": "2026-08-27T09:34:28.648123"
     },
     {
       "id": "chapter_8",
       "index": 8,
       "title": "8. Приговор",
       "char_count": 3808,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/8._Приговор.mp3",
+      "completed_at": "2026-08-27T09:41:01.165304"
     },
     {
       "id": "chapter_9",
@@ -88,9 +88,9 @@
       "index": 10,
       "title": "10. Отпечаток страха",
       "char_count": 2650,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/10._Отпечаток_страха.mp3",
+      "completed_at": "2026-08-27T10:01:41.403267"
     },
     {
       "id": "chapter_11",
@@ -273,5 +273,5 @@
       "completed_at": null
     }
   ],
-  "updated_at": "2026-08-27T09:23:39.111457"
+  "updated_at": "2026-08-27T10:01:41.403294"
 }

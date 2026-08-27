@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initServerStatus();
   initVoices();
   initDictionary();
+  initVedicCleaner();
   initStudio();
   initOutputModal();
 });
@@ -101,6 +102,191 @@ async function loadOutputFiles() {
     });
   } catch (e) {
     container.innerHTML = '<div class="empty-state-mini">Ошибка загрузки списка файлов.</div>';
+  }
+}
+
+// --- Vedic Text Cleaner Tab ---
+function initVedicCleaner() {
+  const rawInput = document.getElementById('vedicRawInput');
+  const cleanedOutput = document.getElementById('vedicCleanedOutput');
+  const rawCharCount = document.getElementById('vedicRawCharCount');
+  const cleanCharCount = document.getElementById('vedicCleanCharCount');
+  const removedBadge = document.getElementById('vedicRemovedBadge');
+  const btnClean = document.getElementById('btnCleanVedicText');
+  const btnClear = document.getElementById('btnClearVedicRaw');
+  const btnCopy = document.getElementById('btnCopyVedicCleaned');
+  const btnDownload = document.getElementById('btnDownloadVedicCleaned');
+  const btnSendToStudio = document.getElementById('btnSendToStudio');
+  const dropZone = document.getElementById('vedicDropZone');
+  const fileInput = document.getElementById('vedicFileInput');
+  const btnChooseFile = document.getElementById('btnVedicChooseFile');
+
+  if (rawInput && rawCharCount) {
+    rawInput.addEventListener('input', () => {
+      rawCharCount.textContent = rawInput.value.length;
+    });
+  }
+
+  if (btnClear) {
+    btnClear.addEventListener('click', () => {
+      rawInput.value = '';
+      rawCharCount.textContent = '0';
+      cleanedOutput.value = '';
+      cleanCharCount.textContent = '0';
+      removedBadge.textContent = 'Удалено: 0%';
+    });
+  }
+
+  if (btnChooseFile && fileInput) {
+    btnChooseFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+  }
+
+  if (dropZone && fileInput) {
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--bg-emerald)';
+      dropZone.style.background = '#f0fdf4';
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = '#cbd5e1';
+      dropZone.style.background = '#fafaf9';
+    });
+    dropZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = '#cbd5e1';
+      dropZone.style.background = '#fafaf9';
+      if (e.dataTransfer.files.length) {
+        handleVedicFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleVedicFileUpload(e.target.files[0]);
+      }
+    });
+  }
+
+  async function handleVedicFileUpload(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      if (btnClean) {
+        btnClean.disabled = true;
+        btnClean.textContent = `Чтение и очистка файла ${file.name}...`;
+      }
+      const res = await fetch('/api/vedic/clean-file', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Ошибка обработки файла');
+      const data = await res.json();
+
+      rawInput.value = `[Загружен файл: ${file.name}, исходных символов: ${data.original_chars}]\n\n` + data.cleaned_text.slice(0, 1000) + '...';
+      rawCharCount.textContent = data.original_chars;
+
+      cleanedOutput.value = data.cleaned_text;
+      cleanCharCount.textContent = data.cleaned_chars;
+      removedBadge.textContent = `Удалено: ${data.removed_chars} (${data.percent_removed}%)`;
+    } catch (e) {
+      alert('Ошибка при очистке файла: ' + e.message);
+    } finally {
+      if (btnClean) {
+        btnClean.disabled = false;
+        btnClean.innerHTML = '<span>✨ Очистить от санскрита и пословного перевода</span>';
+      }
+    }
+  }
+
+  if (btnClean) {
+    btnClean.addEventListener('click', async () => {
+      const text = rawInput.value.trim();
+      if (!text) {
+        alert('Пожалуйста, вставьте текст с санскритом или загрузите файл слева!');
+        return;
+      }
+      try {
+        btnClean.disabled = true;
+        btnClean.textContent = '⏳ Очистка текста от санскрита...';
+
+        const res = await fetch('/api/vedic/clean', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (!res.ok) throw new Error('Ошибка очистки текста');
+        const data = await res.json();
+
+        cleanedOutput.value = data.cleaned_text;
+        cleanCharCount.textContent = data.cleaned_chars;
+        removedBadge.textContent = `Удалено: ${data.removed_chars} (${data.percent_removed}%)`;
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btnClean.disabled = false;
+        btnClean.innerHTML = '<span>✨ Очистить от санскрита и пословного перевода</span>';
+      }
+    });
+  }
+
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      const text = cleanedOutput.value;
+      if (!text) {
+        alert('Нет очищенного текста для копирования!');
+        return;
+      }
+      navigator.clipboard.writeText(text);
+      btnCopy.textContent = '✓ Скопировано';
+      setTimeout(() => btnCopy.textContent = '📋 Скопировать', 2000);
+    });
+  }
+
+  if (btnDownload) {
+    btnDownload.addEventListener('click', () => {
+      const text = cleanedOutput.value;
+      if (!text) {
+        alert('Нет очищенного текста для скачивания!');
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'cleaned_vedic_text.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  if (btnSendToStudio) {
+    btnSendToStudio.addEventListener('click', () => {
+      const text = cleanedOutput.value.trim();
+      if (!text) {
+        alert('Сначала выполните очистку текста!');
+        return;
+      }
+      // Switch to Studio Tab
+      const studioTabBtn = document.querySelector('.nav-pill[data-tab="studio"]');
+      if (studioTabBtn) studioTabBtn.click();
+
+      // Put text into main raw text area
+      const studioInput = document.getElementById('rawTextInput');
+      if (studioInput) {
+        studioInput.value = text;
+        const charCountEl = document.getElementById('statCharCount');
+        if (charCountEl) charCountEl.textContent = text.length;
+      }
+
+      // Automatically trigger chapter & stress parsing
+      const btnApplyStress = document.getElementById('btnApplyStressPreview');
+      if (btnApplyStress) {
+        btnApplyStress.click();
+      }
+    });
   }
 }
 

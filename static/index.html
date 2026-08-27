@@ -28,6 +28,9 @@
         <button class="nav-pill active" data-tab="studio">
           <span class="pill-icon">⚡</span> Озвучка книги
         </button>
+        <button class="nav-pill" data-tab="vedic">
+          <span class="pill-icon">🧹</span> Очистка текста
+        </button>
         <button class="nav-pill" data-tab="dictionary">
           <span class="pill-icon">📖</span> Словарь ударений (<span id="tabDictCount">76</span>)
         </button>
@@ -369,6 +372,74 @@
             </div>
           </div>
 
+        </div>
+
+    <!-- TAB: VEDIC TEXT CLEANER -->
+    <section id="tab-vedic" class="tab-pane">
+      <div class="main-work-grid">
+        
+        <!-- LEFT COLUMN: UNCLEANED TEXT INPUT -->
+        <div class="work-col-left">
+          <div class="bento-card full-tab-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">1. Неочищенный текст (с санскритом)</h3>
+                <p class="card-subtitle">Вставьте текст или загрузите TXT/PDF файл книги (Шримад-Бхагаватам, Бхагавад-гита и др.)</p>
+              </div>
+              <div class="text-meta-pills">
+                <span class="stat-badge">Символов: <strong id="vedicRawCharCount">0</strong></span>
+                <button type="button" class="btn-sm-text" id="btnClearVedicRaw">Очистить</button>
+              </div>
+            </div>
+
+            <!-- Drag & Drop Zone for Raw Text File -->
+            <div class="drop-zone-mini" id="vedicDropZone" style="border: 2px dashed #cbd5e1; border-radius: var(--radius-md); padding: 14px; text-align: center; background: #fafaf9; cursor: pointer; transition: all 0.2s;">
+              <input type="file" id="vedicFileInput" accept=".txt,.pdf,.md" style="display:none">
+              <span>📄 Перетащите файл сюда или <strong style="color:var(--bg-emerald);" id="btnVedicChooseFile">выберите файл с диска</strong></span>
+            </div>
+
+            <div class="textarea-wrapper" style="margin-top: 10px;">
+              <textarea id="vedicRawInput" class="main-textarea" style="height: 420px; font-family: inherit;" placeholder="Вставьте сюда исходный текст главы со шлоками на санскрите и пословным переводом..."></textarea>
+            </div>
+
+            <div class="editor-actions-bar">
+              <button class="btn-emerald flex-1" id="btnCleanVedicText" type="button">
+                <span>✨ Очистить от санскрита и пословного перевода</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: CLEANED RESULT -->
+        <div class="work-col-right">
+          <div class="bento-card full-tab-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">2. Очищенный текст для озвучки</h3>
+                <p class="card-subtitle" id="vedicStatsSubtitle">Остаются только названия глав, номера текстов, литературный перевод и комментарии</p>
+              </div>
+              <div class="text-meta-pills" id="vedicStatsBadges">
+                <span class="stat-badge">Символов: <strong id="vedicCleanCharCount">0</strong></span>
+                <span class="stat-badge" style="background:#f0fdf4; color:#166534;" id="vedicRemovedBadge">Удалено: 0%</span>
+              </div>
+            </div>
+
+            <div class="textarea-wrapper">
+              <textarea id="vedicCleanedOutput" class="main-textarea" style="height: 420px; font-family: inherit;" placeholder="Здесь появится очищенный русский текст без санскрита и пословного перевода..."></textarea>
+            </div>
+
+            <div class="editor-actions-bar" style="flex-wrap: wrap; gap: 8px;">
+              <button class="btn-outline-pill flex-1" id="btnCopyVedicCleaned" type="button">
+                📋 Скопировать
+              </button>
+              <button class="btn-outline-pill flex-1" id="btnDownloadVedicCleaned" type="button">
+                ⬇️ Скачать .TXT
+              </button>
+              <button class="btn-emerald flex-1" id="btnSendToStudio" type="button" title="Передать этот текст на главную вкладку Студии и разбить по главам">
+                🚀 В Студию озвучки →
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
