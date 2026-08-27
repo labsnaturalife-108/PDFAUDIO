@@ -9,6 +9,7 @@ from stress_dict import StressDictionary
 from chunker import TextChunker
 from voice_manager import VoiceManager, VoiceProfile
 from tts_client import FishAudioClient
+from lumean_client import LumeanClient
 from audio_merger import AudioMerger
 
 class PipelineProgress:
@@ -27,11 +28,13 @@ class TextToSpeechPipeline:
         self,
         dictionary: Optional[StressDictionary] = None,
         voice_manager: Optional[VoiceManager] = None,
-        tts_client: Optional[FishAudioClient] = None
+        tts_client: Optional[FishAudioClient] = None,
+        lumean_client: Optional[LumeanClient] = None
     ):
         self.dict = dictionary or StressDictionary()
         self.voice_mgr = voice_manager or VoiceManager()
         self.tts = tts_client or FishAudioClient()
+        self.lumean = lumean_client or LumeanClient()
         self.cancelled_sessions = set()
 
     def cancel(self, session_id: str):
@@ -123,12 +126,24 @@ class TextToSpeechPipeline:
                 if chunk_file.exists() and chunk_file.stat().st_size > 1000:
                     pass
                 else:
-                    self.tts.generate_chunk(
-                        text=chunk,
-                        voice=active_voice,
-                        custom_params=custom_tts_params,
-                        save_path=chunk_file
-                    )
+                    provider = (custom_tts_params or {}).get("provider", "fish_audio")
+                    if provider == "lumean":
+                        lumean_key = (custom_tts_params or {}).get("lumean_api_key") or self.lumean.api_key
+                        lumean_client = LumeanClient(api_key=lumean_key)
+                        voice_id = (custom_tts_params or {}).get("lumean_voice_id") or voice_name
+                        lumean_client.generate_chunk(
+                            text=chunk,
+                            voice_id=str(voice_id),
+                            speed=float((custom_tts_params or {}).get("speed", 1.0)),
+                            save_path=chunk_file
+                        )
+                    else:
+                        self.tts.generate_chunk(
+                            text=chunk,
+                            voice=active_voice,
+                            custom_params=custom_tts_params,
+                            save_path=chunk_file
+                        )
 
                 chunk_audio_files.append(chunk_file)
                 progress.chunk_statuses[i]["status"] = "done"

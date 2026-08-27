@@ -191,40 +191,76 @@
         <!-- RIGHT COLUMN: VOICE, AUDIO PARAMS, PIPELINE PROGRESS & PLAYER -->
         <div class="work-col-right">
           
-          <!-- 1. ACTIVE VOICE CARD -->
-          <div class="bento-card voice-hero-card">
-            <div class="voice-hero-top">
-              <div class="speaker-pill">
-                <span class="sp-icon">🎙️</span>
-                <div>
-                  <span class="sp-tag">Голос диктора</span>
+          <!-- 1. ACTIVE VOICE / ENGINE SELECTOR CARD -->
+          <div class="bento-card voice-card">
+            <div class="card-header-simple">
+              <div>
+                <h3 class="card-title">Голос и движок синтеза</h3>
+                <p class="card-subtitle">Локальная нейросеть или облачный API Lumean</p>
+              </div>
+              <span class="pulse-indicator-static" id="voiceIndicator">Активен</span>
+            </div>
+
+            <!-- TTS Engine Segmented Control -->
+            <div class="form-group" style="margin-bottom: 12px;">
+              <div class="segmented-control" id="ttsEngineToggle">
+                <button class="seg-btn active" data-engine="fish_audio" type="button">🖥️ Fish Audio (Локально)</button>
+                <button class="seg-btn" data-engine="lumean" type="button">☁️ Lumean API (Облако)</button>
+              </div>
+            </div>
+
+            <!-- Fish Audio Section -->
+            <div id="fishAudioVoiceSection">
+              <div class="speaker-preview-box">
+                <div class="speaker-avatar" id="activeVoiceAvatar">🎙️</div>
+                <div class="speaker-info">
+                  <span class="sp-tag">Локальный профиль</span>
                   <strong class="sp-name" id="activeVoiceName">Мой голос (Default)</strong>
                 </div>
+                <div class="voice-action-btns">
+                  <button class="icon-circle-btn" id="btnListenRef" title="Воспроизвести эталон голоса">▶️</button>
+                  <button class="icon-circle-btn" id="btnStopRef" title="Остановить воспроизведение">⏹️</button>
+                </div>
               </div>
-              <div class="voice-action-btns">
-                <button class="icon-circle-btn" id="btnListenRef" title="Воспроизвести эталон голоса">▶️</button>
-                <button class="icon-circle-btn" id="btnStopRef" title="Остановить воспроизведение">⏹️</button>
+
+              <div class="voice-select-row">
+                <div class="form-group flex-1">
+                  <label for="voiceSelect">Выбор локального голоса:</label>
+                  <select id="voiceSelect" class="custom-input custom-select">
+                    <option value="default">⭐️ Мой голос (Default)</option>
+                  </select>
+                </div>
+                <button class="btn-outline-pill btn-add-voice-quick" id="btnQuickAddVoice" type="button" title="Добавить новый профиль голоса">
+                  ➕ Добавить
+                </button>
+              </div>
+
+              <div class="voice-sample-box">
+                <div class="wave-mini">
+                  <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <p class="voice-quote" id="voiceSampleCaption">«Случилось так, что Панду умер молодым, и его пятеро сыновей...»</p>
               </div>
             </div>
 
-            <!-- Voice Selector Dropdown on Main Page -->
-            <div class="voice-select-row">
-              <div class="form-group flex-1">
-                <label for="voiceSelect">Выбор активного голоса:</label>
-                <select id="voiceSelect" class="custom-input custom-select">
-                  <option value="default">⭐️ Мой голос (Default)</option>
-                </select>
+            <!-- Lumean Cloud Section -->
+            <div id="lumeanVoiceSection" class="hidden">
+              <div class="speaker-preview-box" style="background: rgba(13, 56, 44, 0.08); border: 1px solid rgba(13, 56, 44, 0.2);">
+                <div class="speaker-avatar" style="background: #0d382c; color: #bbf7d0;">☁️</div>
+                <div class="speaker-info">
+                  <span class="sp-tag" style="color: #0d382c;">Lumean Cloud TTS</span>
+                  <strong class="sp-name" id="activeLumeanVoiceDisplay">ID: не указан</strong>
+                </div>
+                <div class="voice-action-btns">
+                  <button class="btn-outline-pill btn-sm" id="btnTestLumeanQuick" type="button" title="Проверить статус API">🔍 Тест</button>
+                </div>
               </div>
-              <button class="btn-outline-pill btn-add-voice-quick" id="btnQuickAddVoice" type="button" title="Добавить новый профиль голоса">
-                ➕ Добавить
-              </button>
-            </div>
 
-            <div class="voice-sample-box">
-              <div class="wave-mini">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <div class="form-group" style="margin-top: 10px;">
+                <label for="lumeanVoiceIdInput">ID Голоса Lumean (voice_id):</label>
+                <input type="text" id="lumeanVoiceIdInput" class="custom-input" placeholder="Введите ID голоса из Lumean (напр: 1, 42, anna...)">
+                <small class="helper-text" id="lumeanStatusQuickText">☁️ Синтез будет выполняться через ваш API-ключ lumean.app</small>
               </div>
-              <p class="voice-quote" id="voiceSampleCaption">«Случилось так, что Панду умер молодым, и его пятеро сыновей...»</p>
             </div>
           </div>
 
@@ -544,7 +580,7 @@
 
         <div class="settings-body">
           <div class="form-group">
-            <label>Адрес API сервера модели</label>
+            <label>Адрес API сервера модели (Fish Audio S2)</label>
             <div class="input-with-btn">
               <input type="text" id="settingApiUrl" class="custom-input" value="http://127.0.0.1:8020/generate" readonly>
             </div>
@@ -555,6 +591,53 @@
             <h4>💡 Как запустить локальный сервер Fish Audio S2:</h4>
             <p>В терминале в папке вашей модели выполните:</p>
             <pre><code>python3 -m fish_audio.api --port 8020</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. LUMEAN CLOUD API SETTINGS -->
+      <div class="bento-card max-w-700" style="margin-top: 20px;">
+        <div class="card-header-simple">
+          <div>
+            <h3 class="card-title">☁️ Подключение Lumean Studio API (lumean.app)</h3>
+            <p class="card-subtitle">Облачный синтез речи без нагрузки на процессор и видеокарту</p>
+          </div>
+          <span class="format-pill">X-API-KEY</span>
+        </div>
+
+        <div class="settings-body">
+          <div class="form-group">
+            <label>Ваш API-ключ Lumean (X-API-KEY)</label>
+            <div class="input-with-btn">
+              <input type="password" id="settingLumeanApiKey" class="custom-input" placeholder="Вставьте ваш X-API-KEY из кабинета lumean.app" value="2ncy52mLjYy2uh7osawMqhIMIjopr7gMonXK1mG0JSylwy5oJW7VF1JcpyM0kI8Y">
+              <button type="button" class="btn-sm-action" id="btnToggleApiKeyVisibility" title="Показать/скрыть ключ">👁️</button>
+            </div>
+            <small class="helper-text">Ключ передается в заголовке <code>X-API-KEY</code> на адрес <code>https://api.lumean.app/api/public/</code></small>
+          </div>
+
+          <div class="form-group">
+            <label>ID голоса по умолчанию (voice_id)</label>
+            <input type="text" id="settingLumeanDefaultVoiceId" class="custom-input" placeholder="Например: 1 или ID нужного диктора">
+          </div>
+
+          <div class="editor-actions-bar" style="margin-top: 14px; display: flex; gap: 10px;">
+            <button class="btn-emerald" id="btnSaveLumeanSettings" type="button">
+              <span>💾 Сохранить настройки API</span>
+            </button>
+            <button class="btn-outline-pill" id="btnCheckLumeanLive" type="button">
+              <span>🔍 Проверить подключение</span>
+            </button>
+          </div>
+
+          <div id="lumeanTestResultBox" class="instruction-box hidden" style="margin-top: 16px;">
+            <!-- JS populated test result -->
+          </div>
+
+          <div class="instruction-box" style="margin-top: 16px;">
+            <h4>💡 Инструкция по получению и правам API-ключа:</h4>
+            <p>1. В личном кабинете на <strong>lumean.app</strong> перейдите в раздел <strong>API</strong>.</p>
+            <p>2. При создании ключа убедитесь, что включены галочки разрешений на <strong>"Чтение голосов"</strong> и <strong>"Создание заказов (TTS)"</strong>.</p>
+            <p>3. Выберите нужный ID голоса в каталоге Lumean и укажите его в поле выше.</p>
           </div>
         </div>
       </div>
@@ -583,6 +666,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.6.0"></script>
+  <script src="app.js?v=3.0.0"></script>
 </body>
 </html>

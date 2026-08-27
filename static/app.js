@@ -8,6 +8,7 @@ let activeChunks = [];
 let selectedFormat = 'mp3';
 let voicesData = [];
 let isBatchRunning = false;
+let currentTtsProvider = 'fish_audio';
 
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDictionary();
   initVedicCleaner();
   initStudio();
+  initLumeanAndSettings();
   initOutputModal();
 });
 
@@ -378,6 +380,165 @@ async function initServerStatus() {
 
   check();
   setInterval(check, 8000);
+}
+
+function getTtsProviderPayload() {
+  const isLumean = currentTtsProvider === 'lumean';
+  const lumeanVoiceInput = document.getElementById('lumeanVoiceIdInput');
+  const lumeanVoiceId = lumeanVoiceInput ? lumeanVoiceInput.value.trim() : '';
+  return {
+    provider: currentTtsProvider,
+    lumean_voice_id: isLumean ? (lumeanVoiceId || '1') : null
+  };
+}
+
+function initLumeanAndSettings() {
+  const engineBtns = document.querySelectorAll('#ttsEngineToggle .seg-btn');
+  const fishSection = document.getElementById('fishAudioVoiceSection');
+  const lumeanSection = document.getElementById('lumeanVoiceSection');
+  const lumeanVoiceInput = document.getElementById('lumeanVoiceIdInput');
+  const lumeanDisplay = document.getElementById('activeLumeanVoiceDisplay');
+  const btnTestLumeanQuick = document.getElementById('btnTestLumeanQuick');
+  const btnCheckLumeanLive = document.getElementById('btnCheckLumeanLive');
+  const btnSaveSettings = document.getElementById('btnSaveLumeanSettings');
+  const apiKeyInput = document.getElementById('settingLumeanApiKey');
+  const defaultVoiceInput = document.getElementById('settingLumeanDefaultVoiceId');
+  const btnToggleEye = document.getElementById('btnToggleApiKeyVisibility');
+  const resultBox = document.getElementById('lumeanTestResultBox');
+  const quickStatusText = document.getElementById('lumeanStatusQuickText');
+
+  // Load settings on startup
+  fetch('/api/settings')
+    .then(res => res.json())
+    .then(data => {
+      if (data.tts_provider) {
+        setTtsEngine(data.tts_provider);
+      }
+      if (data.lumean_api_key && apiKeyInput) {
+        apiKeyInput.value = data.lumean_api_key;
+      }
+      if (data.lumean_voice_id) {
+        if (defaultVoiceInput) defaultVoiceInput.value = data.lumean_voice_id;
+        if (lumeanVoiceInput && !lumeanVoiceInput.value) {
+          lumeanVoiceInput.value = data.lumean_voice_id;
+          if (lumeanDisplay) lumeanDisplay.textContent = `ID: ${data.lumean_voice_id}`;
+        }
+      }
+    })
+    .catch(() => {});
+
+  function setTtsEngine(engine) {
+    currentTtsProvider = engine;
+    engineBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.engine === engine);
+    });
+    if (engine === 'lumean') {
+      if (fishSection) fishSection.classList.add('hidden');
+      if (lumeanSection) lumeanSection.classList.remove('hidden');
+    } else {
+      if (fishSection) fishSection.classList.remove('hidden');
+      if (lumeanSection) lumeanSection.classList.add('hidden');
+    }
+  }
+
+  engineBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      setTtsEngine(btn.dataset.engine);
+      // Persist chosen provider
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tts_provider: currentTtsProvider })
+      }).catch(() => {});
+    });
+  });
+
+  if (lumeanVoiceInput) {
+    lumeanVoiceInput.addEventListener('input', () => {
+      const v = lumeanVoiceInput.value.trim();
+      if (lumeanDisplay) lumeanDisplay.textContent = v ? `ID: ${v}` : 'ID: не указан';
+    });
+  }
+
+  // Eye toggle for API Key
+  if (btnToggleEye && apiKeyInput) {
+    btnToggleEye.addEventListener('click', () => {
+      apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+    });
+  }
+
+  // Test Lumean Connection
+  async function testLumean(targetElem, showInResultBox = false) {
+    if (targetElem) targetElem.textContent = '⏳ Проверка...';
+    try {
+      const res = await fetch('/api/lumean/test');
+      const data = await res.json();
+      if (data.connected) {
+        if (quickStatusText) quickStatusText.textContent = `✅ ${data.message}`;
+        if (showInResultBox && resultBox) {
+          resultBox.classList.remove('hidden');
+          resultBox.innerHTML = `<h4>✅ Подключение успешно!</h4><p>${escapeHtml(data.message)}</p>`;
+        } else {
+          alert(`✅ Lumean API: ${data.message}`);
+        }
+      } else {
+        if (quickStatusText) quickStatusText.textContent = `⚠️ ${data.message}`;
+        if (showInResultBox && resultBox) {
+          resultBox.classList.remove('hidden');
+          resultBox.innerHTML = `<h4>⚠️ Статус подключения:</h4><p>${escapeHtml(data.message)}</p>`;
+        } else {
+          alert(`⚠️ Lumean API: ${data.message}`);
+        }
+      }
+    } catch (e) {
+      if (quickStatusText) quickStatusText.textContent = '✕ Ошибка проверки API';
+      alert('Ошибка запроса к серверу: ' + e.message);
+    } finally {
+      if (targetElem) targetElem.textContent = targetElem.id === 'btnTestLumeanQuick' ? '🔍 Тест' : '🔍 Проверить подключение';
+    }
+  }
+
+  if (btnTestLumeanQuick) {
+    btnTestLumeanQuick.addEventListener('click', () => testLumean(btnTestLumeanQuick, false));
+  }
+  if (btnCheckLumeanLive) {
+    btnCheckLumeanLive.addEventListener('click', () => testLumean(btnCheckLumeanLive, true));
+  }
+
+  // Save Settings button
+  if (btnSaveSettings) {
+    btnSaveSettings.addEventListener('click', async () => {
+      const key = apiKeyInput ? apiKeyInput.value.trim() : '';
+      const defVoice = defaultVoiceInput ? defaultVoiceInput.value.trim() : '';
+      btnSaveSettings.textContent = '⏳ Сохранение...';
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lumean_api_key: key,
+            lumean_voice_id: defVoice,
+            tts_provider: currentTtsProvider
+          })
+        });
+        if (res.ok) {
+          btnSaveSettings.textContent = '✓ Сохранено!';
+          if (lumeanVoiceInput && defVoice && !lumeanVoiceInput.value) {
+            lumeanVoiceInput.value = defVoice;
+            if (lumeanDisplay) lumeanDisplay.textContent = `ID: ${defVoice}`;
+          }
+          setTimeout(() => btnSaveSettings.textContent = '💾 Сохранить настройки API', 2000);
+          testLumean(null, true);
+        } else {
+          throw new Error('Ошибка сервера при сохранении');
+        }
+      } catch (e) {
+        alert('Не удалось сохранить настройки: ' + e.message);
+        btnSaveSettings.textContent = '💾 Сохранить настройки API';
+      }
+    });
+  }
 }
 
 function applyVoiceSettings(voice) {
@@ -1340,7 +1501,8 @@ async function synthesizeSingleChapter(chapId) {
     speed: parseFloat(document.getElementById('paramSpeed').value),
     temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
     instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
-    apply_loudnorm: true
+    apply_loudnorm: true,
+    ...getTtsProviderPayload()
   };
 
   try {
@@ -1452,7 +1614,8 @@ async function runBatchAllChapters() {
         speed: parseFloat(document.getElementById('paramSpeed').value),
         temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
         instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
-        apply_loudnorm: true
+        apply_loudnorm: true,
+        ...getTtsProviderPayload()
       };
 
       fetch('/api/generate', {
@@ -1563,7 +1726,8 @@ async function synthesizeSelectedChapters() {
         speed: parseFloat(document.getElementById('paramSpeed').value),
         temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
         instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
-        apply_loudnorm: true
+        apply_loudnorm: true,
+        ...getTtsProviderPayload()
       };
 
       fetch('/api/generate', {
@@ -1647,7 +1811,8 @@ async function synthesizeRawText(rawText) {
     speed: parseFloat(document.getElementById('paramSpeed').value),
     temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
     instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
-    apply_loudnorm: true
+    apply_loudnorm: true,
+    ...getTtsProviderPayload()
   };
 
   try {

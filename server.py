@@ -19,13 +19,15 @@ from extractor import DocumentExtractor
 from stress_dict import StressDictionary
 from chunker import TextChunker
 from chapter_parser import ChapterParser
+import json
 from voice_manager import VoiceManager
 from tts_client import FishAudioClient
+from lumean_client import LumeanClient
 from pipeline import TextToSpeechPipeline, PipelineProgress
 from book_manager import BookProjectManager
 from vedic_cleaner import VedicTextCleaner
 
-app = FastAPI(title="AudioBook TTS Studio", description="Fish Audio S2 Book Narrator")
+app = FastAPI(title="AudioBook TTS Studio", description="Fish Audio S2 & Cloud TTS Book Narrator")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,14 +37,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Persistent settings
+SETTINGS_FILE = DATA_DIR / "settings.json"
+
+def get_app_settings() -> Dict[str, Any]:
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "tts_provider": "fish_audio",
+        "lumean_api_key": "2ncy52mLjYy2uh7osawMqhIMIjopr7gMonXK1mG0JSylwy5oJW7VF1JcpyM0kI8Y",
+        "lumean_voice_id": ""
+    }
+
+def save_app_settings(data: Dict[str, Any]):
+    current = get_app_settings()
+    current.update(data)
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(current, f, ensure_ascii=False, indent=2)
+
 # Services
 dictionary = StressDictionary()
 voice_mgr = VoiceManager()
 tts_client = FishAudioClient()
+lumean_client = LumeanClient(api_key=get_app_settings().get("lumean_api_key", ""))
 pipeline = TextToSpeechPipeline(
     dictionary=dictionary,
     voice_manager=voice_mgr,
-    tts_client=tts_client
+    tts_client=tts_client,
+    lumean_client=lumean_client
 )
 
 # In-memory session tracking
@@ -59,6 +86,11 @@ class PreviewRequest(BaseModel):
 
 class VedicCleanRequest(BaseModel):
     text: str
+
+class AppSettingsRequest(BaseModel):
+    tts_provider: Optional[str] = "fish_audio"
+    lumean_api_key: Optional[str] = None
+    lumean_voice_id: Optional[str] = None
 
 class GenerateRequest(BaseModel):
     chunks: Optional[List[str]] = None
@@ -78,6 +110,9 @@ class GenerateRequest(BaseModel):
     book_id: Optional[str] = None
     chapter_id: Optional[str] = None
     chapter_title: Optional[str] = None
+    provider: Optional[str] = "fish_audio"
+    lumean_voice_id: Optional[str] = None
+    lumean_api_key: Optional[str] = None
 
 class RecordChapterRequest(BaseModel):
     book_id: str
@@ -94,14 +129,41 @@ class VoiceSettingsRequest(BaseModel):
 
 # --- API Routes ---
 
+@app.get("/api/settings")
+def get_settings():
+    return get_app_settings()
+
+@app.post("/api/settings")
+def update_settings(req: AppSettingsRequest):
+    data = req.dict(exclude_none=True)
+    save_app_settings(data)
+    if "lumean_api_key" in data:
+        lumean_client.api_key = data["lumean_api_key"]
+    return {"status": "ok", "settings": get_app_settings()}
+
+@app.get("/api/lumean/test")
+def test_lumean():
+    settings = get_app_settings()
+    client = LumeanClient(api_key=settings.get("lumean_api_key", ""))
+    return client.check_connection()
+
+@app.get("/api/lumean/voices")
+def get_lumean_voices():
+    settings = get_app_settings()
+    client = LumeanClient(api_key=settings.get("lumean_api_key", ""))
+    return client.fetch_voices()
+
 @app.get("/api/status")
 def get_status():
     tts_online = tts_client.check_connection()
+    lumean_status = lumean_client.check_connection()
     return {
         "status": "online",
         "fish_audio_url": tts_client.api_url,
         "fish_audio_connected": tts_online,
-        "default_voice_exists": Path("/Users/jeka/fish-audio-s2/voice/reference.wav").exists()
+        "lumean_status": lumean_status,
+        "default_voice_exists": Path("/Users/jeka/fish-audio-s2/voice/reference.wav").exists(),
+        "settings": get_app_settings()
     }
 
 @app.post("/api/vedic/clean")
@@ -302,12 +364,16 @@ def run_pipeline_task(session_id: str, req: GenerateRequest):
         sessions[session_id] = p
 
     try:
+        app_settings = get_app_settings()
         custom_params = {
             "speed": req.speed,
             "temperature": req.temperature,
             "top_p": req.top_p,
             "top_k": req.top_k,
-            "chunk_length": req.chunk_length
+            "chunk_length": req.chunk_length,
+            "provider": req.provider or app_settings.get("tts_provider", "fish_audio"),
+            "lumean_voice_id": req.lumean_voice_id or app_settings.get("lumean_voice_id", ""),
+            "lumean_api_key": req.lumean_api_key or app_settings.get("lumean_api_key", "")
         }
         if req.instruct:
             custom_params["instruct"] = req.instruct
