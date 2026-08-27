@@ -27,34 +27,34 @@
       "char_count": 3006,
       "status": "done",
       "audio_url": "/api/audio/output/3._Физмат._Одно_рукопожатие_от_Брежнева.mp3",
-      "completed_at": "2026-08-26T15:07:51.099348"
+      "completed_at": "2026-08-26T15:22:02.458663"
     },
     {
       "id": "chapter_4",
       "index": 4,
       "title": "4. Первый Интернет. Снятие санкций",
       "char_count": 1152,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/4._Первый_Интернет._Снятие_санкций.mp3",
+      "completed_at": "2026-08-26T16:33:00.583116"
     },
     {
       "id": "chapter_5",
       "index": 5,
       "title": "5. Проводники на волю",
       "char_count": 5652,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/5._Проводники_на_волю.mp3",
+      "completed_at": "2026-08-27T09:14:54.650209"
     },
     {
       "id": "chapter_6",
       "index": 6,
       "title": "6. Три удара Попика",
       "char_count": 4536,
-      "status": "idle",
-      "audio_url": null,
-      "completed_at": null
+      "status": "done",
+      "audio_url": "/api/audio/output/6._Три_удара_Попика.mp3",
+      "completed_at": "2026-08-27T09:23:39.111434"
     },
     {
       "id": "chapter_7",
@@ -273,5 +273,5 @@
       "completed_at": null
     }
   ],
-  "updated_at": "2026-08-26T15:12:22.274326"
+  "updated_at": "2026-08-27T09:23:39.111457"
 }

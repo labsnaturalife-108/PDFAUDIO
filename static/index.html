@@ -133,6 +133,27 @@
               <div class="book-progress-fill" id="bookProgressFill" style="width: 0%;"></div>
             </div>
 
+            <!-- Bulk Selection & Action Toolbar -->
+            <div class="chapters-selection-toolbar" id="chaptersSelectionToolbar">
+              <div class="selection-left">
+                <label class="select-all-label">
+                  <input type="checkbox" id="chkSelectAllChapters" class="custom-checkbox" onchange="toggleSelectAllChapters(this.checked)">
+                  <span>Выбрать все</span>
+                </label>
+                <button type="button" class="btn-sm-text" id="btnSelectOnlyUnvoiced" onclick="selectUnvoicedChapters()">
+                  🎯 Только неозвученные
+                </button>
+                <button type="button" class="btn-sm-text" id="btnDeselectAll" onclick="deselectAllChapters()">
+                  ✕ Снять выбор
+                </button>
+              </div>
+              <div class="selection-right">
+                <button type="button" class="btn-gold btn-sm" id="btnSynthesizeSelectedChapters" onclick="synthesizeSelectedChapters()" style="display: none;">
+                  ✨ Озвучить выбранные (<span id="selectedCountBadge">0</span>)
+                </button>
+              </div>
+            </div>
+
             <!-- Chapters List Grid -->
             <div id="chaptersList" class="chapters-list-grid">
               <div class="empty-chapters-placeholder">

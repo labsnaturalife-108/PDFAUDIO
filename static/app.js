@@ -835,9 +835,74 @@ function initStudio() {
   }
 }
 
-// --- Chapter Management Functions ---
-
 let currentBookId = 'default_book';
+let selectedChapterIds = new Set();
+
+function toggleChapterSelection(chapId, isChecked) {
+  if (isChecked) {
+    selectedChapterIds.add(chapId);
+  } else {
+    selectedChapterIds.delete(chapId);
+  }
+  updateSelectionUI();
+}
+
+function toggleSelectAllChapters(isChecked) {
+  if (isChecked) {
+    loadedChapters.forEach(c => selectedChapterIds.add(c.id));
+  } else {
+    selectedChapterIds.clear();
+  }
+  renderChaptersList();
+}
+
+function selectUnvoicedChapters() {
+  selectedChapterIds.clear();
+  loadedChapters.forEach(c => {
+    if (c.status !== 'done') {
+      selectedChapterIds.add(c.id);
+    }
+  });
+  renderChaptersList();
+}
+
+function deselectAllChapters() {
+  selectedChapterIds.clear();
+  renderChaptersList();
+}
+
+function updateSelectionUI() {
+  const count = selectedChapterIds.size;
+  const badge = document.getElementById('selectedCountBadge');
+  const btnSynthSelected = document.getElementById('btnSynthesizeSelectedChapters');
+  const chkAll = document.getElementById('chkSelectAllChapters');
+
+  if (badge) badge.textContent = count;
+  if (btnSynthSelected) {
+    btnSynthSelected.style.display = count > 0 ? 'inline-flex' : 'none';
+    btnSynthSelected.textContent = `✨ Озвучить выбранные (${count})`;
+  }
+  if (chkAll) {
+    chkAll.checked = loadedChapters.length > 0 && count === loadedChapters.length;
+    chkAll.indeterminate = count > 0 && count < loadedChapters.length;
+  }
+
+  // Update visual selected-chapter class on cards
+  loadedChapters.forEach(c => {
+    const card = document.getElementById(`chapCard-${c.id}`);
+    const chk = document.querySelector(`.chapter-select-checkbox[data-id="${c.id}"]`);
+    if (card) {
+      if (selectedChapterIds.has(c.id)) {
+        card.classList.add('selected-chapter');
+      } else {
+        card.classList.remove('selected-chapter');
+      }
+    }
+    if (chk) {
+      chk.checked = selectedChapterIds.has(c.id);
+    }
+  });
+}
 
 function renderChaptersList() {
   const container = document.getElementById('chaptersList');
@@ -872,9 +937,10 @@ function renderChaptersList() {
       <div class="empty-chapters-placeholder">
         <div class="placeholder-icon">📚</div>
         <h4>Главы книги еще не загружены</h4>
-        <p>Загрузите PDF или текстовый файл книги, и она автоматически разделится по главам.</p>
+        <p>Загрузите PDF или текстовый файл книги, и она автоматически разделится по главам с сохранением лога озвучки.</p>
       </div>
     `;
+    updateSelectionUI();
     return;
   }
 
@@ -882,8 +948,9 @@ function renderChaptersList() {
   loadedChapters.forEach((chap, idx) => {
     const isCurrentActive = chap.id === activeChapterId;
     const isDone = chap.status === 'done';
+    const isSelected = selectedChapterIds.has(chap.id);
     const card = document.createElement('div');
-    card.className = `chapter-card-item ${isCurrentActive ? 'active-chapter' : ''} ${chap.status}`;
+    card.className = `chapter-card-item ${isCurrentActive ? 'active-chapter' : ''} ${isSelected ? 'selected-chapter' : ''} ${chap.status}`;
     card.id = `chapCard-${chap.id}`;
 
     let statusBadge = 'Ожидание';
@@ -896,6 +963,8 @@ function renderChaptersList() {
     card.innerHTML = `
       <div class="chapter-item-top">
         <div class="chapter-title-group">
+          <input type="checkbox" class="chapter-select-checkbox" data-id="${chap.id}" ${isSelected ? 'checked' : ''}
+                 onchange="toggleChapterSelection('${chap.id}', this.checked)" title="Выбрать главу для выборочной озвучки">
           <span class="chapter-icon">${isDone ? '✅' : '📖'}</span>
           <input type="text" class="chapter-title-input" value="${escapeHtml(chap.title)}" 
                  onchange="updateChapterTitle('${chap.id}', this.value)" title="Нажмите, чтобы переименовать главу">
@@ -929,6 +998,8 @@ function renderChaptersList() {
     `;
     container.appendChild(card);
   });
+
+  updateSelectionUI();
 }
 
 function updateChapterTitle(chapId, newTitle) {
@@ -1179,6 +1250,118 @@ async function runBatchAllChapters() {
     btnSynthesizeAll.disabled = false;
     renderChaptersList();
   }
+}
+
+async function synthesizeSelectedChapters() {
+  const targetChapters = loadedChapters.filter(c => selectedChapterIds.has(c.id));
+  if (targetChapters.length === 0) {
+    alert('Выберите хотя бы одну главу галочкой!');
+    return;
+  }
+
+  isBatchRunning = true;
+  const btnStop = document.getElementById('btnStopGeneration');
+  if (btnStop) btnStop.classList.remove('hidden');
+
+  const btnSynthSelected = document.getElementById('btnSynthesizeSelectedChapters');
+  if (btnSynthSelected) {
+    btnSynthSelected.disabled = true;
+    btnSynthSelected.textContent = `⏳ Озвучка (${targetChapters.length} глав)...`;
+  }
+
+  for (let i = 0; i < targetChapters.length; i++) {
+    if (!isBatchRunning) break;
+    const chap = targetChapters[i];
+
+    await new Promise((resolve) => {
+      showChapterChunks(chap.id);
+      chap.status = 'generating';
+      renderChaptersList();
+
+      const payload = {
+        chunks: chap.chunks,
+        book_id: currentBookId,
+        chapter_id: chap.id,
+        chapter_title: chap.title,
+        voice_name: document.getElementById('voiceSelect') ? document.getElementById('voiceSelect').value : 'default',
+        output_name: chap.title.replace(/[^\w\sа-яА-ЯёЁ.-]/gi, '_'),
+        output_format: selectedFormat,
+        pause_duration: parseFloat(document.getElementById('paramPause').value),
+        speed: parseFloat(document.getElementById('paramSpeed').value),
+        temperature: parseFloat(document.getElementById('paramTemp') ? document.getElementById('paramTemp').value : 0.88),
+        instruct: document.getElementById('customInstructInput') ? document.getElementById('customInstructInput').value.trim() : null,
+        apply_loudnorm: true
+      };
+
+      fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        currentSessionId = data.session_id;
+        startProgressPolling();
+
+        const timer = setInterval(async () => {
+          if (!isBatchRunning) {
+            clearInterval(timer);
+            resolve();
+            return;
+          }
+          try {
+            const pRes = await fetch(`/api/progress/${data.session_id}`);
+            const pData = await pRes.json();
+            if (pData.status === 'completed') {
+              clearInterval(timer);
+              chap.status = 'done';
+              chap.audio_url = pData.output_url;
+              selectedChapterIds.delete(chap.id); // Finished chapter is unselected
+              renderChaptersList();
+
+              fetch('/api/projects/record-chapter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  book_id: currentBookId,
+                  chapter_id: chap.id,
+                  chapter_title: chap.title,
+                  audio_url: pData.output_url
+                })
+              }).catch(() => {});
+
+              resolve();
+            } else if (pData.status === 'cancelled') {
+              clearInterval(timer);
+              chap.status = 'idle';
+              renderChaptersList();
+              resolve();
+            } else if (pData.status === 'error') {
+              clearInterval(timer);
+              chap.status = 'error';
+              renderChaptersList();
+              resolve();
+            }
+          } catch (e) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 1200);
+      })
+      .catch(e => {
+        chap.status = 'error';
+        renderChaptersList();
+        resolve();
+      });
+    });
+  }
+
+  isBatchRunning = false;
+  if (btnSynthSelected) {
+    btnSynthSelected.disabled = false;
+    updateSelectionUI();
+  }
+  if (btnStop) btnStop.classList.add('hidden');
 }
 
 async function synthesizeRawText(rawText) {
