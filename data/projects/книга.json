@@ -6,11 +6,11 @@
       "id": "chapter_1",
       "index": 1,
       "title": "1. Книга",
-      "char_count": 590,
+      "char_count": 207,
       "status": "done",
-      "audio_url": "/api/audio/output/1._Книга Lab.mp3",
-      "completed_at": "2026-08-28T12:12:05.914984"
+      "audio_url": "/api/audio/output/1._Книга_локал.mp3",
+      "completed_at": "2026-08-28T14:58:22.918616"
     }
   ],
-  "updated_at": "2026-08-28T12:14:03.698059"
+  "updated_at": "2026-08-28T15:00:15.317839"
 }

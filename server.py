@@ -96,6 +96,7 @@ class AppSettingsRequest(BaseModel):
     tts_provider: Optional[str] = "fish_audio"
     lumean_api_key: Optional[str] = None
     lumean_bearer_token: Optional[str] = None
+    lumean_refresh_token: Optional[str] = None
     lumean_voice_id: Optional[str] = None
 
 class GenerateRequest(BaseModel):

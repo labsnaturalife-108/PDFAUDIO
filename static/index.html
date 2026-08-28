@@ -617,12 +617,21 @@
           </div>
 
           <div class="form-group">
-            <label>Токен сессии (Bearer Token)</label>
+            <label>Токен сессии (Bearer Token / access_token)</label>
             <div class="input-with-btn">
               <input type="password" id="settingLumeanBearerToken" class="custom-input" placeholder="Bearer токен для прямой загрузки архивов (JWT)">
               <button type="button" class="btn-sm-action" id="btnToggleTokenVisibility" title="Показать/скрыть токен">👁️</button>
             </div>
             <small class="helper-text">Используется для генерации прямых ссылок на скачивание архива с MP3.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Токен авто-обновления (refresh_token)</label>
+            <div class="input-with-btn">
+              <input type="password" id="settingLumeanRefreshToken" class="custom-input" placeholder="Значение refresh_token из Local Storage lumean.app">
+              <button type="button" class="btn-sm-action" id="btnToggleRefreshTokenVisibility" title="Показать/скрыть токен">👁️</button>
+            </div>
+            <small class="helper-text">Позволяет программе автоматически продлевать авторизацию без истечения срока действия.</small>
           </div>
 
           <div class="form-group">

@@ -403,9 +403,11 @@ function initLumeanAndSettings() {
   const btnSaveSettings = document.getElementById('btnSaveLumeanSettings');
   const apiKeyInput = document.getElementById('settingLumeanApiKey');
   const bearerTokenInput = document.getElementById('settingLumeanBearerToken');
+  const refreshTokenInput = document.getElementById('settingLumeanRefreshToken');
   const defaultVoiceInput = document.getElementById('settingLumeanDefaultVoiceId');
   const btnToggleEye = document.getElementById('btnToggleApiKeyVisibility');
   const btnToggleTokenEye = document.getElementById('btnToggleTokenVisibility');
+  const btnToggleRefreshEye = document.getElementById('btnToggleRefreshTokenVisibility');
   const resultBox = document.getElementById('lumeanTestResultBox');
   const quickStatusText = document.getElementById('lumeanStatusQuickText');
 
@@ -421,6 +423,9 @@ function initLumeanAndSettings() {
       }
       if (data.lumean_bearer_token && bearerTokenInput) {
         bearerTokenInput.value = data.lumean_bearer_token;
+      }
+      if (data.lumean_refresh_token && refreshTokenInput) {
+        refreshTokenInput.value = data.lumean_refresh_token;
       }
       if (data.lumean_voice_id) {
         if (defaultVoiceInput) defaultVoiceInput.value = data.lumean_voice_id;
@@ -476,6 +481,11 @@ function initLumeanAndSettings() {
       bearerTokenInput.type = bearerTokenInput.type === 'password' ? 'text' : 'password';
     });
   }
+  if (btnToggleRefreshEye && refreshTokenInput) {
+    btnToggleRefreshEye.addEventListener('click', () => {
+      refreshTokenInput.type = refreshTokenInput.type === 'password' ? 'text' : 'password';
+    });
+  }
 
   // Test Lumean Connection
   async function testLumean(targetElem, showInResultBox = false) {
@@ -520,6 +530,7 @@ function initLumeanAndSettings() {
     btnSaveSettings.addEventListener('click', async () => {
       const key = apiKeyInput ? apiKeyInput.value.trim() : '';
       const token = bearerTokenInput ? bearerTokenInput.value.trim() : '';
+      const rToken = refreshTokenInput ? refreshTokenInput.value.trim() : '';
       const defVoice = defaultVoiceInput ? defaultVoiceInput.value.trim() : '';
       btnSaveSettings.textContent = '⏳ Сохранение...';
 
@@ -530,6 +541,7 @@ function initLumeanAndSettings() {
           body: JSON.stringify({
             lumean_api_key: key,
             lumean_bearer_token: token,
+            lumean_refresh_token: rToken,
             lumean_voice_id: defVoice,
             tts_provider: currentTtsProvider
           })
