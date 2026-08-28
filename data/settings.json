@@ -1,5 +1,5 @@
 {
-  "tts_provider": "lumean",
+  "tts_provider": "fish_audio",
   "lumean_api_key": "2ncy52mLjYy2uh7osawMqhIMIjopr7gMonXK1mG0JSylwy5oJW7VF1JcpyM0kI8Y",
   "lumean_voice_id": "",
   "lumean_bearer_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwaS5sdW1lYW4uYXBwL2FwaS9sb2dpbiIsImlhdCI6MTc4NzkwNzk2MCwiZXhwIjoxNzg3OTExNTYwLCJuYmYiOjE3ODc5MDc5NjAsImp0aSI6InhQaEZFNXhqMHhRU0REWEMiLCJzdWIiOiI4MTc2IiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsImp3dHMiOiIwMWEwNDc5ZS03MDgwLTczMTctOGQyZi1mNjUxNGI1Y2VhN2MifQ.7frXhbczc0wsCLVsAKzLXi6wyh34_CsBAe5lfvaxxI8",
