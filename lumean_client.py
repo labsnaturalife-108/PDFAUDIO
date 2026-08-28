@@ -140,87 +140,82 @@ class LumeanClient:
             "User-Agent": "AudioBookStudio/1.0"
         }
 
-        last_error = None
-        for attempt in range(1, retries + 1):
+        # 1. Create order STRICTLY ONCE (No automatic token-draining retries!)
+        try:
+            resp = requests.post(
+                f"{self.PUBLIC_BASE_URL}/orders",
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+        except Exception as e:
+            raise RuntimeError(f"Ошибка сети при отправке заказа в Lumean: {e}")
+
+        if resp.status_code not in [200, 201]:
+            if resp.status_code == 422:
+                val_err = resp.json().get("errors", {})
+                raise ValueError(f"Ошибка валидации Lumean: {val_err}")
+            elif resp.status_code == 403:
+                err_msg = resp.json().get("message", "Нет прав на выполнение действия")
+                raise PermissionError(f"Ошибка прав Lumean (403): {err_msg}")
+            else:
+                raise RuntimeError(f"Lumean API вернул ошибку {resp.status_code}: {resp.text[:200]}")
+
+        res_data = resp.json().get("data", {})
+        order_id = res_data.get("id")
+        if not order_id:
+            raise RuntimeError(f"Lumean не вернул ID созданного заказа: {resp.text[:200]}")
+
+        # 2. Poll order until finished (Wait for audio synthesis)
+        self._poll_order(order_id, headers)
+
+        # 3. Request signed archive download link (Safe retry on download only, never re-ordering)
+        archive_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Origin": "https://lumean.app",
+            "Referer": "https://lumean.app/"
+        }
+        if self.bearer_token:
+            archive_headers["Authorization"] = f"Bearer {self.bearer_token}"
+        else:
+            archive_headers["X-API-KEY"] = self.api_key
+
+        download_url = None
+        for dl_attempt in range(1, 4):
             try:
-                # 1. Create order
-                resp = requests.post(
-                    f"{self.PUBLIC_BASE_URL}/orders",
-                    json=payload,
-                    headers=headers,
-                    timeout=self.timeout
+                arch_resp = requests.post(
+                    f"{self.API_BASE_URL}/orders/{order_id}/archive",
+                    json={"include_service_files": 1, "number_base": 1, "number_padding": 3},
+                    headers=archive_headers,
+                    timeout=30
                 )
-
-                if resp.status_code in [200, 201]:
-                    res_data = resp.json().get("data", {})
-                    order_id = res_data.get("id")
-
-                    if not order_id:
-                        raise RuntimeError(f"Lumean не вернул ID созданного заказа: {resp.text[:200]}")
-
-                    # 2. Poll order until finished
-                    self._poll_order(order_id, headers)
-
-                    # 3. Request signed archive download link
-                    archive_headers = {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                        "Origin": "https://lumean.app",
-                        "Referer": "https://lumean.app/"
-                    }
-                    if self.bearer_token:
-                        archive_headers["Authorization"] = f"Bearer {self.bearer_token}"
-                    else:
-                        archive_headers["X-API-KEY"] = self.api_key
-
-                    arch_resp = requests.post(
-                        f"{self.API_BASE_URL}/orders/{order_id}/archive",
-                        json={"include_service_files": 1, "number_base": 1, "number_padding": 3},
-                        headers=archive_headers,
-                        timeout=30
-                    )
-
-                    if arch_resp.status_code != 200:
-                        raise RuntimeError(f"Ошибка получения архива из Lumean ({arch_resp.status_code}): {arch_resp.text[:200]}")
-
+                if arch_resp.status_code == 200:
                     download_url = arch_resp.json().get("data", {}).get("url")
-                    if not download_url:
-                        raise RuntimeError(f"Lumean не вернул ссылку на скачивание архива: {arch_resp.text[:200]}")
+                    if download_url:
+                        break
+            except Exception:
+                pass
+            time.sleep(2)
 
-                    # 4. Download zip and extract MP3
-                    zip_resp = requests.get(download_url, timeout=self.timeout)
-                    if zip_resp.status_code != 200 or len(zip_resp.content) == 0:
-                        raise RuntimeError(f"Ошибка загрузки архива ({zip_resp.status_code})")
+        if not download_url:
+            raise RuntimeError(f"Не удалось получить ссылку на скачивание готового заказа {order_id} из Lumean.")
 
-                    mp3_bytes = self._extract_mp3_from_zip(zip_resp.content)
-                    if not mp3_bytes:
-                        raise RuntimeError("В скачанном архиве Lumean не найден MP3 аудиофайл.")
+        # 4. Download zip and extract MP3
+        zip_resp = requests.get(download_url, timeout=self.timeout)
+        if zip_resp.status_code != 200 or len(zip_resp.content) == 0:
+            raise RuntimeError(f"Ошибка загрузки архива ({zip_resp.status_code})")
 
-                    if save_path:
-                        save_path.parent.mkdir(parents=True, exist_ok=True)
-                        with open(save_path, "wb") as f:
-                            f.write(mp3_bytes)
+        mp3_bytes = self._extract_mp3_from_zip(zip_resp.content)
+        if not mp3_bytes:
+            raise RuntimeError("В скачанном архиве Lumean не найден MP3 аудиофайл.")
 
-                    return mp3_bytes
+        if save_path:
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(save_path, "wb") as f:
+                f.write(mp3_bytes)
 
-                elif resp.status_code == 422:
-                    val_err = resp.json().get("errors", {})
-                    raise ValueError(f"Ошибка валидации Lumean: {val_err}")
-                elif resp.status_code == 403:
-                    err_msg = resp.json().get("message", "Нет прав на выполнение действия")
-                    raise PermissionError(f"Ошибка прав Lumean (403): {err_msg}")
-                else:
-                    last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
-
-            except Exception as e:
-                last_error = str(e)
-                if isinstance(e, (PermissionError, ValueError)):
-                    raise
-
-            if attempt < retries:
-                time.sleep(2 * attempt)
-
-        raise RuntimeError(f"Ошибка Lumean API после {retries} попыток: {last_error}")
+        return mp3_bytes
 
     def _poll_order(self, order_id: str, headers: Dict[str, str], max_wait: int = 180):
         """Polls order completion on /api/public/orders/{id}"""
