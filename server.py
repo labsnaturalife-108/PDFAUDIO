@@ -50,6 +50,7 @@ def get_app_settings() -> Dict[str, Any]:
     return {
         "tts_provider": "fish_audio",
         "lumean_api_key": "2ncy52mLjYy2uh7osawMqhIMIjopr7gMonXK1mG0JSylwy5oJW7VF1JcpyM0kI8Y",
+        "lumean_bearer_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwaS5sdW1lYW4uYXBwL2FwaS9yZWZyZXNoIiwiaWF0IjoxNzg3OTAyOTA1LCJleHAiOjE3ODc5MDY1MDUsIm5iZiI6MTc4NzkwMjkwNSwianRpIjoiZkF5alJQOGRzVnljZHpodiIsInN1YiI6IjgxNzYiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3Iiwiand0cyI6IjAxYTA0NzUxLTRkZGItNzFhOC1iY2RhLTE5MjIxYjAzNDA1MyJ9.0f4FzvkZpIs-Foj0EQSAYs20VBIBLT58fSVia8da9JE",
         "lumean_voice_id": ""
     }
 
@@ -64,7 +65,11 @@ def save_app_settings(data: Dict[str, Any]):
 dictionary = StressDictionary()
 voice_mgr = VoiceManager()
 tts_client = FishAudioClient()
-lumean_client = LumeanClient(api_key=get_app_settings().get("lumean_api_key", ""))
+_settings = get_app_settings()
+lumean_client = LumeanClient(
+    api_key=_settings.get("lumean_api_key", ""),
+    bearer_token=_settings.get("lumean_bearer_token", "")
+)
 pipeline = TextToSpeechPipeline(
     dictionary=dictionary,
     voice_manager=voice_mgr,
@@ -90,6 +95,7 @@ class VedicCleanRequest(BaseModel):
 class AppSettingsRequest(BaseModel):
     tts_provider: Optional[str] = "fish_audio"
     lumean_api_key: Optional[str] = None
+    lumean_bearer_token: Optional[str] = None
     lumean_voice_id: Optional[str] = None
 
 class GenerateRequest(BaseModel):
@@ -113,6 +119,7 @@ class GenerateRequest(BaseModel):
     provider: Optional[str] = "fish_audio"
     lumean_voice_id: Optional[str] = None
     lumean_api_key: Optional[str] = None
+    lumean_bearer_token: Optional[str] = None
 
 class RecordChapterRequest(BaseModel):
     book_id: str

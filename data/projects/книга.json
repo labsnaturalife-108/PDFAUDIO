@@ -5,12 +5,12 @@
     {
       "id": "chapter_1",
       "index": 1,
-      "title": "1. ТЕКСТ 1",
-      "char_count": 428,
+      "title": "1. Книга",
+      "char_count": 208,
       "status": "done",
       "audio_url": "/api/audio/output/1._ТЕКСТ_3.mp3",
       "completed_at": "2026-08-27T15:40:50.224586"
     }
   ],
-  "updated_at": "2026-08-27T15:40:50.224615"
+  "updated_at": "2026-08-28T10:56:24.967923"
 }

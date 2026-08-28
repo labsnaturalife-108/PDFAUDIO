@@ -68,20 +68,31 @@ class AudioMerger:
         temp_dir = output_file.parent / ".tmp_merge"
         temp_dir.mkdir(parents=True, exist_ok=True)
         
-        sample_rate, channels = AudioMerger.probe_audio(chunk_files[0])
         silent_file = None
         list_file_path = temp_dir / f"concat_list_{uid}.txt"
 
         try:
+            # 1. Normalize all input chunks to standard 44.1kHz mono PCM WAV to guarantee 100% flawless concat
+            norm_chunks: List[Path] = []
+            for idx, c_path in enumerate(chunk_files):
+                norm_chunk = temp_dir / f"norm_{uid}_{idx:04d}.wav"
+                cmd_norm = [
+                    "ffmpeg", "-y", "-i", str(c_path.resolve()),
+                    "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le",
+                    str(norm_chunk)
+                ]
+                subprocess.run(cmd_norm, capture_output=True, check=True)
+                norm_chunks.append(norm_chunk)
+
+            # 2. Create silence if pause requested
             if pause_duration > 0:
-                silent_file = temp_dir / f"silence_{sample_rate}_{channels}_{pause_duration}.wav"
-                if not silent_file.exists():
-                    AudioMerger.create_silence(pause_duration, sample_rate, channels, silent_file)
+                silent_file = temp_dir / f"silence_{uid}.wav"
+                AudioMerger.create_silence(pause_duration, 44100, 1, silent_file)
 
             with open(list_file_path, "w", encoding="utf-8") as f:
-                for i, chunk_path in enumerate(chunk_files):
+                for i, chunk_path in enumerate(norm_chunks):
                     f.write(f"file '{chunk_path.resolve()}'\n")
-                    if silent_file and i < len(chunk_files) - 1:
+                    if silent_file and i < len(norm_chunks) - 1:
                         f.write(f"file '{silent_file.resolve()}'\n")
 
             # Build ffmpeg command
@@ -115,9 +126,16 @@ class AudioMerger:
             return output_file
 
         finally:
+            # Cleanup temporary list and normalized files
             if list_file_path.exists():
-                list_file_path.unlink()
+                try: list_file_path.unlink()
+                except: pass
             if silent_file and silent_file.exists():
-                silent_file.unlink()
+                try: silent_file.unlink()
+                except: pass
+            for nc in norm_chunks if 'norm_chunks' in locals() else []:
+                if nc.exists():
+                    try: nc.unlink()
+                    except: pass
             if temp_dir.exists() and not any(temp_dir.iterdir()):
                 temp_dir.rmdir()

@@ -616,6 +616,15 @@
           </div>
 
           <div class="form-group">
+            <label>Токен сессии (Bearer Token)</label>
+            <div class="input-with-btn">
+              <input type="password" id="settingLumeanBearerToken" class="custom-input" placeholder="Bearer токен для прямой загрузки архивов (JWT)">
+              <button type="button" class="btn-sm-action" id="btnToggleTokenVisibility" title="Показать/скрыть токен">👁️</button>
+            </div>
+            <small class="helper-text">Используется для генерации прямых ссылок на скачивание архива с MP3.</small>
+          </div>
+
+          <div class="form-group">
             <label>ID голоса по умолчанию (voice_id)</label>
             <input type="text" id="settingLumeanDefaultVoiceId" class="custom-input" placeholder="Например: 1 или ID нужного диктора">
           </div>

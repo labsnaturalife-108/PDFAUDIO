@@ -113,10 +113,11 @@ class TextToSpeechPipeline:
                     progress_callback(progress)
                 return progress
 
-            chunk_file = session_cache_dir / f"audio_chunk_{i:04d}.wav"
+            provider = (custom_tts_params or {}).get("provider", "fish_audio")
+            ext = "mp3" if provider == "lumean" else "wav"
+            chunk_file = session_cache_dir / f"audio_chunk_{i:04d}.{ext}"
             progress.current_chunk = i + 1
             progress.chunk_statuses[i]["status"] = "generating"
-            progress.message = f"Озвучка фрагмента {i+1} из {len(chunks)}..."
             
             if progress_callback:
                 progress_callback(progress)
@@ -126,14 +127,14 @@ class TextToSpeechPipeline:
                 if chunk_file.exists() and chunk_file.stat().st_size > 1000:
                     pass
                 else:
-                    provider = (custom_tts_params or {}).get("provider", "fish_audio")
                     if provider == "lumean":
                         lumean_key = (custom_tts_params or {}).get("lumean_api_key") or self.lumean.api_key
-                        lumean_client = LumeanClient(api_key=lumean_key)
+                        lumean_token = (custom_tts_params or {}).get("lumean_bearer_token") or self.lumean.bearer_token
+                        l_client = LumeanClient(api_key=lumean_key, bearer_token=lumean_token)
                         voice_id = (custom_tts_params or {}).get("lumean_voice_id") or voice_name
-                        lumean_client.generate_chunk(
+                        l_client.generate_chunk(
                             text=chunk,
-                            voice_id=str(voice_id),
+                            voice_id=str(voice_id) if voice_id and voice_id != 'default' else None,
                             speed=float((custom_tts_params or {}).get("speed", 1.0)),
                             save_path=chunk_file
                         )

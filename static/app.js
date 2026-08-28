@@ -402,8 +402,10 @@ function initLumeanAndSettings() {
   const btnCheckLumeanLive = document.getElementById('btnCheckLumeanLive');
   const btnSaveSettings = document.getElementById('btnSaveLumeanSettings');
   const apiKeyInput = document.getElementById('settingLumeanApiKey');
+  const bearerTokenInput = document.getElementById('settingLumeanBearerToken');
   const defaultVoiceInput = document.getElementById('settingLumeanDefaultVoiceId');
   const btnToggleEye = document.getElementById('btnToggleApiKeyVisibility');
+  const btnToggleTokenEye = document.getElementById('btnToggleTokenVisibility');
   const resultBox = document.getElementById('lumeanTestResultBox');
   const quickStatusText = document.getElementById('lumeanStatusQuickText');
 
@@ -416,6 +418,9 @@ function initLumeanAndSettings() {
       }
       if (data.lumean_api_key && apiKeyInput) {
         apiKeyInput.value = data.lumean_api_key;
+      }
+      if (data.lumean_bearer_token && bearerTokenInput) {
+        bearerTokenInput.value = data.lumean_bearer_token;
       }
       if (data.lumean_voice_id) {
         if (defaultVoiceInput) defaultVoiceInput.value = data.lumean_voice_id;
@@ -460,10 +465,15 @@ function initLumeanAndSettings() {
     });
   }
 
-  // Eye toggle for API Key
+  // Eye toggle for API Key & Token
   if (btnToggleEye && apiKeyInput) {
     btnToggleEye.addEventListener('click', () => {
       apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+    });
+  }
+  if (btnToggleTokenEye && bearerTokenInput) {
+    btnToggleTokenEye.addEventListener('click', () => {
+      bearerTokenInput.type = bearerTokenInput.type === 'password' ? 'text' : 'password';
     });
   }
 
@@ -509,6 +519,7 @@ function initLumeanAndSettings() {
   if (btnSaveSettings) {
     btnSaveSettings.addEventListener('click', async () => {
       const key = apiKeyInput ? apiKeyInput.value.trim() : '';
+      const token = bearerTokenInput ? bearerTokenInput.value.trim() : '';
       const defVoice = defaultVoiceInput ? defaultVoiceInput.value.trim() : '';
       btnSaveSettings.textContent = '⏳ Сохранение...';
 
@@ -518,6 +529,7 @@ function initLumeanAndSettings() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             lumean_api_key: key,
+            lumean_bearer_token: token,
             lumean_voice_id: defVoice,
             tts_provider: currentTtsProvider
           })

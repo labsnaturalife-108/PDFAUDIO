@@ -2,20 +2,25 @@ import os
 import time
 import json
 import requests
+import zipfile
+import io
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 class LumeanClient:
     """
     Client for Lumean Studio TTS API (https://lumean.app)
-    Base URL: https://api.lumean.app/api/public
-    Auth: Header 'X-API-KEY: <api_key>'
+    Base URL: https://api.lumean.app/api
+    Auth: Header 'X-API-KEY: <api_key>' and 'Authorization: Bearer <bearer_token>'
     """
-    BASE_URL = "https://api.lumean.app/api/public"
+    PUBLIC_BASE_URL = "https://api.lumean.app/api/public"
+    API_BASE_URL = "https://api.lumean.app/api"
 
-    def __init__(self, api_key: str = "", timeout: int = 300):
+    def __init__(self, api_key: str = "", bearer_token: str = "", timeout: int = 300):
         self.api_key = api_key.strip()
+        self.bearer_token = bearer_token.strip()
         self.timeout = timeout
+        self._cached_template_id: Optional[str] = None
 
     def check_connection(self) -> Dict[str, Any]:
         """Checks API key validity and connectivity."""
@@ -24,18 +29,24 @@ class LumeanClient:
         
         try:
             resp = requests.get(
-                f"{self.BASE_URL}/voices",
+                f"{self.PUBLIC_BASE_URL}/templates",
                 headers={
                     "X-API-KEY": self.api_key,
                     "Accept": "application/json",
                     "User-Agent": "AudioBookStudio/1.0"
                 },
-                timeout=8
+                timeout=10
             )
             if resp.status_code == 200:
                 data = resp.json()
-                voices_count = len(data) if isinstance(data, list) else len(data.get("data", []))
-                return {"connected": True, "message": f"Lumean Онлайн ({voices_count} голосов доступно)"}
+                templates = data.get("data", [])
+                t_count = len(templates)
+                template_name = templates[0].get("name") if t_count > 0 else "Нет шаблонов"
+                return {
+                    "connected": True,
+                    "message": f"Lumean Онлайн (Доступно шаблонов: {t_count}, активен: «{template_name}»)",
+                    "templates": templates
+                }
             elif resp.status_code == 403:
                 err = resp.json().get("message", "Нет прав на выполнение действия")
                 return {"connected": False, "message": f"Ошибка 403: {err}. Проверьте права API-ключа в кабинете lumean.app"}
@@ -46,14 +57,14 @@ class LumeanClient:
         except Exception as e:
             return {"connected": False, "message": f"Ошибка соединения: {str(e)}"}
 
-    def fetch_voices(self) -> List[Dict[str, Any]]:
-        """Retrieves list of available voices from Lumean."""
+    def fetch_templates(self) -> List[Dict[str, Any]]:
+        """Retrieves list of user templates from Lumean."""
         if not self.api_key:
             return []
 
         try:
             resp = requests.get(
-                f"{self.BASE_URL}/voices",
+                f"{self.PUBLIC_BASE_URL}/templates",
                 headers={
                     "X-API-KEY": self.api_key,
                     "Accept": "application/json",
@@ -63,34 +74,64 @@ class LumeanClient:
             )
             if resp.status_code == 200:
                 data = resp.json()
-                if isinstance(data, list):
-                    return data
-                elif isinstance(data, dict):
-                    return data.get("data", data.get("voices", []))
+                return data.get("data", [])
             return []
         except Exception:
             return []
 
+    def get_default_template_id(self) -> Optional[str]:
+        """Gets or caches the default template ID."""
+        if self._cached_template_id:
+            return self._cached_template_id
+        templates = self.fetch_templates()
+        if templates:
+            self._cached_template_id = templates[0].get("id")
+            return self._cached_template_id
+        return None
+
     def generate_chunk(
         self,
         text: str,
-        voice_id: str,
+        voice_id: Optional[str] = None,
+        template_id: Optional[str] = None,
         speed: float = 1.0,
         retries: int = 3,
         save_path: Optional[Path] = None
     ) -> bytes:
         """
-        Synthesizes a single chunk using Lumean TTS.
-        Creates an order on /api/public/orders and polls for completion.
+        Synthesizes a chunk using Lumean TTS.
+        1. Creates order via /api/public/orders.
+        2. Polls order until finished.
+        3. Requests signed archive download link.
+        4. Downloads zip and extracts the clean MP3 audio.
         """
         if not self.api_key:
             raise ValueError("Не указан API-ключ Lumean.")
 
-        payload = {
-            "text": text,
-            "voice_id": voice_id,
-            "speed": speed
+        clean_text = text.strip()
+        if not clean_text:
+            raise ValueError("Текст для озвучки пуст.")
+
+        # Ensure template_id is resolved
+        active_template_id = template_id or self.get_default_template_id()
+        if not active_template_id:
+            raise ValueError("Не найден активный шаблон в аккаунте Lumean. Создайте шаблон в кабинете lumean.app.")
+
+        payload: Dict[str, Any] = {
+            "template_id": active_template_id,
+            "input_text": clean_text
         }
+
+        if voice_id and voice_id.strip():
+            payload["voice_id"] = voice_id.strip()
+            payload["config"] = {
+                "tts_settings": {
+                    "voice_id": voice_id.strip(),
+                    "voice_settings": {
+                        "speed": speed
+                    }
+                }
+            }
 
         headers = {
             "X-API-KEY": self.api_key,
@@ -99,59 +140,81 @@ class LumeanClient:
             "User-Agent": "AudioBookStudio/1.0"
         }
 
-        # Step 1: Create synthesis order / request
         last_error = None
         for attempt in range(1, retries + 1):
             try:
+                # 1. Create order
                 resp = requests.post(
-                    f"{self.BASE_URL}/orders",
+                    f"{self.PUBLIC_BASE_URL}/orders",
                     json=payload,
                     headers=headers,
                     timeout=self.timeout
                 )
 
                 if resp.status_code in [200, 201]:
-                    res_data = resp.json()
-                    # Check if audio is returned directly or as audio_url
-                    if resp.headers.get("Content-Type", "").startswith("audio/"):
-                        audio_bytes = resp.content
-                        if save_path:
-                            save_path.parent.mkdir(parents=True, exist_ok=True)
-                            with open(save_path, "wb") as f:
-                                f.write(audio_bytes)
-                        return audio_bytes
+                    res_data = resp.json().get("data", {})
+                    order_id = res_data.get("id")
 
-                    audio_url = None
-                    if isinstance(res_data, dict):
-                        audio_url = res_data.get("audio_url") or res_data.get("url") or (res_data.get("data") or {}).get("audio_url")
-                        order_id = res_data.get("id") or res_data.get("order_id") or (res_data.get("data") or {}).get("id")
+                    if not order_id:
+                        raise RuntimeError(f"Lumean не вернул ID созданного заказа: {resp.text[:200]}")
 
-                        # If async order ID returned, poll order status
-                        if not audio_url and order_id:
-                            audio_url = self._poll_order(order_id, headers)
+                    # 2. Poll order until finished
+                    self._poll_order(order_id, headers)
 
-                    if audio_url:
-                        # Download audio file
-                        audio_resp = requests.get(audio_url, timeout=self.timeout)
-                        if audio_resp.status_code == 200:
-                            audio_bytes = audio_resp.content
-                            if save_path:
-                                save_path.parent.mkdir(parents=True, exist_ok=True)
-                                with open(save_path, "wb") as f:
-                                    f.write(audio_bytes)
-                            return audio_bytes
+                    # 3. Request signed archive download link
+                    archive_headers = {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "Origin": "https://lumean.app",
+                        "Referer": "https://lumean.app/"
+                    }
+                    if self.bearer_token:
+                        archive_headers["Authorization"] = f"Bearer {self.bearer_token}"
+                    else:
+                        archive_headers["X-API-KEY"] = self.api_key
 
-                    raise RuntimeError(f"Lumean не вернул ссылку на аудио: {res_data}")
+                    arch_resp = requests.post(
+                        f"{self.API_BASE_URL}/orders/{order_id}/archive",
+                        json={"include_service_files": 1, "number_base": 1, "number_padding": 3},
+                        headers=archive_headers,
+                        timeout=30
+                    )
 
+                    if arch_resp.status_code != 200:
+                        raise RuntimeError(f"Ошибка получения архива из Lumean ({arch_resp.status_code}): {arch_resp.text[:200]}")
+
+                    download_url = arch_resp.json().get("data", {}).get("url")
+                    if not download_url:
+                        raise RuntimeError(f"Lumean не вернул ссылку на скачивание архива: {arch_resp.text[:200]}")
+
+                    # 4. Download zip and extract MP3
+                    zip_resp = requests.get(download_url, timeout=self.timeout)
+                    if zip_resp.status_code != 200 or len(zip_resp.content) == 0:
+                        raise RuntimeError(f"Ошибка загрузки архива ({zip_resp.status_code})")
+
+                    mp3_bytes = self._extract_mp3_from_zip(zip_resp.content)
+                    if not mp3_bytes:
+                        raise RuntimeError("В скачанном архиве Lumean не найден MP3 аудиофайл.")
+
+                    if save_path:
+                        save_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(save_path, "wb") as f:
+                            f.write(mp3_bytes)
+
+                    return mp3_bytes
+
+                elif resp.status_code == 422:
+                    val_err = resp.json().get("errors", {})
+                    raise ValueError(f"Ошибка валидации Lumean: {val_err}")
                 elif resp.status_code == 403:
                     err_msg = resp.json().get("message", "Нет прав на выполнение действия")
-                    raise PermissionError(f"Ошибка прав Lumean (403): {err_msg}. Проверьте права API-ключа.")
+                    raise PermissionError(f"Ошибка прав Lumean (403): {err_msg}")
                 else:
                     last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
 
             except Exception as e:
                 last_error = str(e)
-                if isinstance(e, PermissionError):
+                if isinstance(e, (PermissionError, ValueError)):
                     raise
 
             if attempt < retries:
@@ -159,22 +222,36 @@ class LumeanClient:
 
         raise RuntimeError(f"Ошибка Lumean API после {retries} попыток: {last_error}")
 
-    def _poll_order(self, order_id: str, headers: Dict[str, str], max_wait: int = 120) -> str:
+    def _poll_order(self, order_id: str, headers: Dict[str, str], max_wait: int = 180):
         """Polls order completion on /api/public/orders/{id}"""
         start = time.time()
         while time.time() - start < max_wait:
             try:
-                resp = requests.get(f"{self.BASE_URL}/orders/{order_id}", headers=headers, timeout=10)
+                resp = requests.get(f"{self.PUBLIC_BASE_URL}/orders/{order_id}", headers=headers, timeout=12)
                 if resp.status_code == 200:
-                    data = resp.json()
-                    status = data.get("status") or (data.get("data") or {}).get("status")
-                    audio_url = data.get("audio_url") or (data.get("data") or {}).get("audio_url") or data.get("url")
-                    if status in ["completed", "done", "success"] and audio_url:
-                        return audio_url
+                    order = resp.json().get("data", {})
+                    status = order.get("status")
+
+                    if status in ["completed", "done", "success"]:
+                        return
                     elif status in ["failed", "error"]:
-                        raise RuntimeError(f"Генерация Lumean завершилась с ошибкой: {data}")
+                        failure_reason = order.get("failure_reason") or "Неизвестная ошибка синтеза"
+                        raise RuntimeError(f"Заказ в Lumean завершился с ошибкой: {failure_reason}")
             except Exception as e:
-                if "Генерация Lumean" in str(e):
+                if "Заказ в Lumean" in str(e):
                     raise
-            time.sleep(1.5)
+            time.sleep(2.0)
+
         raise TimeoutError("Превышено время ожидания готовности аудио в Lumean.")
+
+    @staticmethod
+    def _extract_mp3_from_zip(zip_bytes: bytes) -> Optional[bytes]:
+        """Extracts first .mp3 file from zip bytes."""
+        try:
+            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+                for filename in zf.namelist():
+                    if filename.lower().endswith(".mp3"):
+                        return zf.read(filename)
+        except Exception:
+            return None
+        return None
