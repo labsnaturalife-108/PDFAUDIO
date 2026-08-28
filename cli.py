@@ -99,9 +99,20 @@ def cmd_convert(args):
         console.print(f"\n[bold green]✓ Готово![/bold green] Аудиофайл успешно сохранен:\n[bold cyan]{out_path.resolve()}[/bold cyan]\n")
 
 def cmd_server(args):
-    """Starts the FastAPI Web Studio server."""
+    """Starts the FastAPI Web Studio server and automatically opens browser."""
     import uvicorn
-    console.print(f"\n[bold green]🚀 Запуск веб-студии на[/bold green] [bold cyan]http://{args.host}:{args.port}[/bold cyan]\n")
+    import threading
+    import webbrowser
+    import time
+
+    url = f"http://{args.host}:{args.port}"
+    console.print(f"\n[bold green]🚀 Запуск веб-студии на[/bold green] [bold cyan]{url}[/bold cyan]\n")
+
+    def open_browser():
+        time.sleep(1.2)
+        webbrowser.open(url)
+
+    threading.Thread(target=open_browser, daemon=True).start()
     uvicorn.run("server:app", host=args.host, port=args.port, reload=args.reload)
 
 def main():
