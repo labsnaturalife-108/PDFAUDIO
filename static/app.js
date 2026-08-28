@@ -518,6 +518,30 @@ function initLumeanAndSettings() {
     }
   }
 
+  const btnSyncBrowser = document.getElementById('btnSyncLumeanFromBrowser');
+  if (btnSyncBrowser) {
+    btnSyncBrowser.addEventListener('click', async () => {
+      btnSyncBrowser.textContent = '⏳ Чтение из Chrome...';
+      try {
+        const res = await fetch('/api/lumean/sync_browser', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          if (bearerTokenInput) bearerTokenInput.value = data.bearer_token;
+          if (refreshTokenInput) refreshTokenInput.value = data.refresh_token;
+          btnSyncBrowser.textContent = '✓ Токены синхронизированы!';
+          setTimeout(() => btnSyncBrowser.textContent = '🔄 Взять токены из браузера Chrome (1 клик)', 3000);
+          testLumean(null, true);
+        } else {
+          btnSyncBrowser.textContent = '🔄 Взять токены из браузера Chrome (1 клик)';
+          alert(data.message);
+        }
+      } catch (e) {
+        btnSyncBrowser.textContent = '🔄 Взять токены из браузера Chrome (1 клик)';
+        alert('Ошибка синхронизации: ' + e.message);
+      }
+    });
+  }
+
   if (btnTestLumeanQuick) {
     btnTestLumeanQuick.addEventListener('click', () => testLumean(btnTestLumeanQuick, false));
   }

@@ -161,6 +161,71 @@ def get_lumean_voices():
     client = LumeanClient(api_key=settings.get("lumean_api_key", ""))
     return client.fetch_voices()
 
+@app.post("/api/lumean/sync_browser")
+def sync_lumean_tokens_from_browser():
+    """
+    Automatically extracts current token and refresh_token from open lumean.app tab in Google Chrome.
+    """
+    script = '''
+    tell application "Google Chrome"
+        repeat with w in windows
+            repeat with t in tabs of w
+                if URL of t contains "lumean.app" then
+                    set res to execute t javascript "JSON.stringify({token: localStorage.getItem('token') || localStorage.getItem('access_token'), refresh_token: localStorage.getItem('refresh_token')})"
+                    return res
+                end if
+            end repeat
+        end repeat
+        return "not_found"
+    end tell
+    '''
+    try:
+        proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=5)
+        if proc.returncode != 0:
+            err = proc.stderr
+            if "AppleScript" in err or "JavaScript" in err or "12" in err:
+                return {
+                    "success": False,
+                    "need_permission": True,
+                    "message": "Включите в Google Chrome (1 раз): верхнее меню «Вид» ➔ «Разработчикам» ➔ «Разрешить JavaScript из событий Apple»."
+                }
+            return {"success": False, "message": f"Ошибка Chrome: {err[:150]}"}
+        
+        output = proc.stdout.strip()
+        if output == "not_found":
+            return {
+                "success": False,
+                "message": "В Google Chrome не найдена открытая вкладка lumean.app. Откройте сайт lumean.app в браузере и нажмите кнопку снова."
+            }
+        
+        data = json.loads(output)
+        token = data.get("token")
+        refresh_token = data.get("refresh_token")
+        
+        if not token or not refresh_token:
+            return {
+                "success": False,
+                "message": "Токены не найдены на странице lumean.app. Убедитесь, что вы авторизованы в аккаунте на сайте."
+            }
+        
+        # Save to settings
+        settings = get_app_settings()
+        settings["lumean_bearer_token"] = token
+        settings["lumean_access_token"] = token
+        settings["lumean_refresh_token"] = refresh_token
+        settings["tts_provider"] = "lumean"
+        save_app_settings(settings)
+        lumean_client.bearer_token = token
+        
+        return {
+            "success": True,
+            "message": "✅ Токены успешно и автоматически скопированы из Google Chrome!",
+            "bearer_token": token,
+            "refresh_token": refresh_token
+        }
+    except Exception as e:
+        return {"success": False, "message": f"Ошибка синхронизации: {str(e)}"}
+
 @app.get("/api/status")
 def get_status():
     tts_online = tts_client.check_connection()

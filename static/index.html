@@ -639,7 +639,10 @@
             <input type="text" id="settingLumeanDefaultVoiceId" class="custom-input" placeholder="Например: 1 или ID нужного диктора">
           </div>
 
-          <div class="editor-actions-bar" style="margin-top: 14px; display: flex; gap: 10px;">
+          <div class="editor-actions-bar" style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn-emerald" id="btnSyncLumeanFromBrowser" type="button" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white;" title="Автоматически скопировать токены из открытой вкладки lumean.app в Google Chrome">
+              <span>🔄 Взять токены из браузера Chrome (1 клик)</span>
+            </button>
             <button class="btn-emerald" id="btnSaveLumeanSettings" type="button">
               <span>💾 Сохранить настройки API</span>
             </button>
