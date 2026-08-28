@@ -7,6 +7,63 @@ import io
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
+SETTINGS_PATH = Path("data/settings.json")
+
+class LumeanTokenManager:
+    """
+    Manages access token and refresh token rotation with auto-persistence.
+    """
+    def __init__(self, settings_path: Path = SETTINGS_PATH):
+        self.settings_path = settings_path
+
+    def load_settings(self) -> Dict[str, Any]:
+        if not self.settings_path.exists():
+            return {}
+        try:
+            with open(self.settings_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def save_tokens(self, access_token: str, refresh_token: str):
+        settings = self.load_settings()
+        settings["lumean_bearer_token"] = access_token
+        settings["lumean_access_token"] = access_token
+        settings["lumean_refresh_token"] = refresh_token
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.settings_path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+
+    def refresh(self) -> Optional[str]:
+        """Exchanges refresh_token for a new access_token and refresh_token pair."""
+        settings = self.load_settings()
+        r_token = settings.get("lumean_refresh_token")
+        if not r_token:
+            return None
+
+        try:
+            resp = requests.post(
+                "https://api.lumean.app/api/refresh",
+                json={"refresh_token": r_token.strip()},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": "AudioBookStudio/1.0"
+                },
+                timeout=15
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("data", {})
+                new_access = data.get("access_token")
+                new_refresh = data.get("refresh_token")
+                if new_access and new_refresh:
+                    self.save_tokens(new_access, new_refresh)
+                    return new_access
+        except Exception:
+            pass
+        return None
+
+
 class LumeanClient:
     """
     Client for Lumean Studio TTS API (https://lumean.app)
@@ -21,6 +78,7 @@ class LumeanClient:
         self.bearer_token = bearer_token.strip()
         self.timeout = timeout
         self._cached_template_id: Optional[str] = None
+        self.token_manager = LumeanTokenManager()
 
     def check_connection(self) -> Dict[str, Any]:
         """Checks API key validity and connectivity."""
@@ -89,20 +147,72 @@ class LumeanClient:
             return self._cached_template_id
         return None
 
+    def _get_current_bearer_token(self) -> str:
+        """Gets current active Bearer token from settings or memory."""
+        settings = self.token_manager.load_settings()
+        return settings.get("lumean_bearer_token") or self.bearer_token
+
+    def _request_archive_download_url(self, order_id: str) -> str:
+        """
+        Requests signed archive download URL. Automatically refreshes bearer token if expired.
+        """
+        token = self._get_current_bearer_token()
+
+        for attempt in range(2):
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Origin": "https://lumean.app",
+                "Referer": "https://lumean.app/"
+            }
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            else:
+                headers["X-API-KEY"] = self.api_key
+
+            try:
+                arch_resp = requests.post(
+                    f"{self.API_BASE_URL}/orders/{order_id}/archive",
+                    json={"include_service_files": 1, "number_base": 1, "number_padding": 3},
+                    headers=archive_headers if 'archive_headers' in locals() else headers,
+                    timeout=30
+                )
+
+                if arch_resp.status_code == 200:
+                    url = arch_resp.json().get("data", {}).get("url")
+                    if url:
+                        return url
+                elif arch_resp.status_code == 401:
+                    # Token expired -> automatically refresh
+                    new_token = self.token_manager.refresh()
+                    if new_token:
+                        token = new_token
+                        self.bearer_token = new_token
+                        continue
+                    else:
+                        raise PermissionError("Сессия Lumean истекла. Пожалуйста, обновите refresh_token в настройках.")
+                else:
+                    time.sleep(2)
+            except PermissionError:
+                raise
+            except Exception as e:
+                time.sleep(2)
+
+        raise RuntimeError(f"Не удалось получить ссылку на скачивание архива для заказа {order_id}")
+
     def generate_chunk(
         self,
         text: str,
         voice_id: Optional[str] = None,
         template_id: Optional[str] = None,
         speed: float = 1.0,
-        retries: int = 3,
         save_path: Optional[Path] = None
     ) -> bytes:
         """
         Synthesizes a chunk using Lumean TTS.
-        1. Creates order via /api/public/orders.
+        1. Creates order via /api/public/orders (STRICTLY ONCE, NO DUPLICATE ORDERS).
         2. Polls order until finished.
-        3. Requests signed archive download link.
+        3. Requests signed archive download link (with auto-refreshing token).
         4. Downloads zip and extracts the clean MP3 audio.
         """
         if not self.api_key:
@@ -140,7 +250,7 @@ class LumeanClient:
             "User-Agent": "AudioBookStudio/1.0"
         }
 
-        # 1. Create order STRICTLY ONCE (No automatic token-draining retries!)
+        # 1. Create order STRICTLY ONCE (No duplicate orders / No token waste)
         try:
             resp = requests.post(
                 f"{self.PUBLIC_BASE_URL}/orders",
@@ -169,37 +279,8 @@ class LumeanClient:
         # 2. Poll order until finished (Wait for audio synthesis)
         self._poll_order(order_id, headers)
 
-        # 3. Request signed archive download link (Safe retry on download only, never re-ordering)
-        archive_headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Origin": "https://lumean.app",
-            "Referer": "https://lumean.app/"
-        }
-        if self.bearer_token:
-            archive_headers["Authorization"] = f"Bearer {self.bearer_token}"
-        else:
-            archive_headers["X-API-KEY"] = self.api_key
-
-        download_url = None
-        for dl_attempt in range(1, 4):
-            try:
-                arch_resp = requests.post(
-                    f"{self.API_BASE_URL}/orders/{order_id}/archive",
-                    json={"include_service_files": 1, "number_base": 1, "number_padding": 3},
-                    headers=archive_headers,
-                    timeout=30
-                )
-                if arch_resp.status_code == 200:
-                    download_url = arch_resp.json().get("data", {}).get("url")
-                    if download_url:
-                        break
-            except Exception:
-                pass
-            time.sleep(2)
-
-        if not download_url:
-            raise RuntimeError(f"Не удалось получить ссылку на скачивание готового заказа {order_id} из Lumean.")
+        # 3. Request signed archive download link (with auto-token refresh)
+        download_url = self._request_archive_download_url(order_id)
 
         # 4. Download zip and extract MP3
         zip_resp = requests.get(download_url, timeout=self.timeout)
