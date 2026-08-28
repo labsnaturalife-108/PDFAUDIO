@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import asyncio
+import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
